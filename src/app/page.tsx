@@ -3,7 +3,6 @@ import { Button } from "./_components/button";
 import { GardenPreview } from "./_components/garden-preview";
 import { DEFAULT_COLS, DEFAULT_ROWS } from "./_components/garden-config";
 import { api } from "@/trpc/server";
-import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 
 export default async function Home() {
@@ -11,7 +10,39 @@ export default async function Home() {
   
   const session = await auth();
   if (!session) {
-    return redirect("/auth");
+    return (
+      <div className="mx-auto max-w-3xl py-10">
+        <div className="card p-6">
+          <h1 className="text-2xl font-semibold">GreenStride</h1>
+          <p className="mt-2 text-[rgb(var(--color-foreground))/0.8]">
+            Track low-carbon trips, earn coins, and grow your virtual forest. Plant real trees by turning daily journeys into climate impact.
+          </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <Link href="/auth">
+              <Button size="lg">Sign in to get started</Button>
+            </Link>
+            <Link href="/impact" className="sm:ml-2">
+              <Button size="lg" variant="secondary">See impact</Button>
+            </Link>
+          </div>
+        </div>
+
+        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="card p-5">
+            <div className="text-sm text-[rgb(var(--color-foreground))/0.6]">1. Move</div>
+            <div className="mt-1 font-medium">Walk, cycle, or take transit</div>
+          </div>
+          <div className="card p-5">
+            <div className="text-sm text-[rgb(var(--color-foreground))/0.6]">2. Earn</div>
+            <div className="mt-1 font-medium">Collect coins for distance</div>
+          </div>
+          <div className="card p-5">
+            <div className="text-sm text-[rgb(var(--color-foreground))/0.6]">3. Grow</div>
+            <div className="mt-1 font-medium">Plant and expand your garden</div>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const streak = 0;

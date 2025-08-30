@@ -94,7 +94,7 @@ const cloudManager = (() => {
   (root as any).raycast = () => null;
   const slots: CloudSlot[] = [];
   const maxClouds = 4;
-  let bounds: CloudBounds = { left: -10, right: 10, minY: -10, maxY: 10, minZ: -0.2, maxZ: 0.25 };
+  let bounds: CloudBounds = { left: -10, right: 10, minY: 2.2, maxY: 4.5, minZ: 0, maxZ: 0.5 };
   // randomized spawn interval
   const spawnMinSec = 1.2;
   const spawnMaxSec = 3.2;
@@ -693,7 +693,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     const left = -width / 2 - 2.0;
     const right = width / 2 + 2.0;
     const minY = 2.2, maxY = 4.5;
-    const minZ = -0.6, maxZ = 0.6;
+    const minZ = 0, maxZ = 0.6;
     const { scene } = useThree();
 
     useEffect(() => {

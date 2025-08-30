@@ -30,7 +30,7 @@ export default function RootLayout({
       <body>
         <SessionProvider>
           <TRPCReactProvider>
-            <header className="border-b border-white/10 bg-black/10 backdrop-blur supports-[backdrop-filter]:bg-black/20">
+            <header className="border-b border-[rgb(var(--color-foreground))/0.08] bg-[rgb(var(--color-card))] backdrop-blur supports-[backdrop-filter]:bg-[rgb(var(--color-card))]">
               <div className="container-slim flex items-center justify-between py-3">
                 <a href="/" className="flex items-center gap-2 font-semibold">
                   <span className="inline-block h-2 w-2 rounded-full bg-[rgb(var(--color-primary))] shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
