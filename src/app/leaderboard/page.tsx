@@ -9,7 +9,7 @@ export default function LeaderboardPage() {
       </div>
 
       <div className="card p-4 space-y-2">
-        {[...Array(10)].map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2">
             <div className="flex items-center gap-3">
               <div className="h-6 w-6 rounded-full bg-white/10 text-center text-xs leading-6">{i+1}</div>

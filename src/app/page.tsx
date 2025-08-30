@@ -1,7 +1,6 @@
 import Link from "next/link";
-
-import { api } from "@/trpc/server";
 import { Button } from "./_components/button";
+import { GardenPreview } from "./_components/garden-preview";
 
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
@@ -39,11 +38,7 @@ export default async function Home() {
             <h2 className="text-lg font-semibold">Garden</h2>
             <Link href="/garden" className="text-sm text-[rgb(var(--color-primary))] hover:underline">Manage</Link>
           </div>
-          <div className="grid-tiles">
-            {Array.from({ length: 80 }).map((_, i) => (
-              <div key={i} className="tile" />
-            ))}
-          </div>
+          <GardenPreview />
         </div>
 
         <div className="card p-5">

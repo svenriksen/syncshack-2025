@@ -55,3 +55,66 @@ html, body {
   aspect-ratio: 1/1;
   @apply rounded-[var(--radius-sm)] bg-[rgb(var(--color-card))] outline outline-1 outline-[rgba(255,255,255,0.06)];
 }
+
+/* Isometric garden helpers */
+.iso-board {
+  /* Center and give room for perspective */
+  position: relative;
+  width: 100%;
+  padding-top: 56%; /* responsive height */
+  perspective: 1000px;
+}
+
+.iso-plane {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transform: rotateX(60deg) rotateZ(45deg) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+.iso-grid {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(10, 48px);
+  grid-auto-rows: 48px;
+  gap: 6px;
+}
+
+.iso-tile {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  transform: rotateZ(-45deg) rotateX(-60deg);
+  transform-style: preserve-3d;
+}
+
+.iso-tile .face {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--color-card));
+  border-radius: 6px;
+  outline: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+
+/* Tree variants as glowing centers */
+.iso-tree::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -60%);
+  border-radius: 9999px;
+  background: rgb(var(--color-primary));
+  box-shadow: 0 0 14px rgba(16,185,129,0.8);
+}
+
+.iso-tree.young::after { background: rgb(var(--color-accent)); box-shadow: 0 0 14px rgba(34,197,94,0.8); }
+.iso-tree.mature::after { background: #4ade80; box-shadow: 0 0 16px rgba(74,222,128,0.9); }
+.iso-tree.withered::after { background: #6b7280; box-shadow: 0 0 8px rgba(107,114,128,0.6); }
