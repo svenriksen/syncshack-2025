@@ -4,16 +4,16 @@ import { GardenPreview } from "./_components/garden-preview";
 import { DEFAULT_COLS, DEFAULT_ROWS } from "./_components/garden-config";
 import { api } from "@/trpc/server";
 import { redirect } from "next/navigation";
+import { auth } from "@/server/auth";
 
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
   
-  const session = await api.session.get();
-  // if not logged in, redirect to auth
+  const session = await auth();
   if (!session) {
     return redirect("/auth");
   }
-  
+
   const streak = 0;
   const multiplier = 0;
   const { coins } = await api.coin.getBalance();
