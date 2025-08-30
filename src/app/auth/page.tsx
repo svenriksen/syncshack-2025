@@ -21,13 +21,25 @@ export default function AuthPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch (error) {
+      console.error("Google sign in error:", error);
+      setMessage("Failed to sign in with Google");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
 
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-2xl font-semibold">Sign in</h1>
       <p className="text-white/70 text-sm">
-        Sign in to start tracking trips and growing your garden.
+        Sign in with Discord or Google to start tracking trips and growing your garden.
       </p>
       
       {message && (
@@ -48,6 +60,18 @@ export default function AuthPage() {
           disabled={isLoading}
         >
           {isLoading ? "Signing in..." : "Continue with Discord"}
+        </Button>
+        
+        <div className="text-center text-xs text-white/40">or</div>
+        
+        <Button 
+          className="w-full" 
+          size="lg" 
+          variant="secondary"
+          onClick={handleGoogleSignIn}
+          disabled={isLoading}
+        >
+          {isLoading ? "Signing in..." : "Continue with Google"}
         </Button>
       </div>
       
