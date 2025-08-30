@@ -3,6 +3,7 @@ import { coinRouter } from "@/server/api/routers/coin";
 import { streakRouter } from "@/server/api/routers/streak";
 import { profileRouter } from "@/server/api/routers/profile";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import {osmRouter} from "@/server/api/routers/osm";
 
 /**
  * This is the primary router for your server.
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   coin: coinRouter,
   streak: streakRouter,
   profile: profileRouter,
+  osm: osmRouter
 });
 
 // export type definition of API
