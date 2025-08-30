@@ -25,14 +25,14 @@ const getQueryClient = () => {
 export const api = createTRPCReact<AppRouter>();
 
 /**
- * Inference helper for inputs.
+ * Inference map_helper for inputs.
  *
  * @example type HelloInput = RouterInputs['example']['hello']
  */
 export type RouterInputs = inferRouterInputs<AppRouter>;
 
 /**
- * Inference helper for outputs.
+ * Inference map_helper for outputs.
  *
  * @example type HelloOutput = RouterOutputs['example']['hello']
  */
