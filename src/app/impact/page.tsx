@@ -40,7 +40,12 @@ export default async function ImpactPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Impact</h1>
-        <Link href="/" className="text-sm text-[rgb(var(--color-primary))] hover:underline">Back</Link>
+        <div className="flex items-center gap-2">
+          <Link href="/impact/everyone" className="text-sm bg-[rgb(var(--color-primary))] px-3 py-1 rounded hover:opacity-80">
+            Everyone's Impact
+          </Link>
+          <Link href="/" className="text-sm text-[rgb(var(--color-primary))] hover:underline">Back</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

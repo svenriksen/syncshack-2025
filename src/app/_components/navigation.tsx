@@ -43,6 +43,7 @@ export function Navigation() {
         <Link className="hover:text-[rgb(var(--color-foreground))]" href="/garden">Garden</Link>
         <Link className="hover:text-[rgb(var(--color-foreground))]" href="/leaderboard">Leaderboard</Link>
         <Link className="hover:text-[rgb(var(--color-foreground))]" href="/impact">Impact</Link>
+        <Link className="hover:text-[rgb(var(--color-foreground))]" href="/impact/everyone">Everyone's Impact</Link>
 
         {/* Theme toggle (icon) */}
         <button
@@ -142,6 +143,7 @@ export function Navigation() {
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[rgb(var(--color-foreground))/0.08]" href="/garden" onClick={() => setOpen(false)}>Garden</Link>
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[rgb(var(--color-foreground))/0.08]" href="/leaderboard" onClick={() => setOpen(false)}>Leaderboard</Link>
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[rgb(var(--color-foreground))/0.08]" href="/impact" onClick={() => setOpen(false)}>Impact</Link>
+            <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[rgb(var(--color-foreground))/0.08]" href="/impact/everyone" onClick={() => setOpen(false)}>Everyone's Impact</Link>
 
             {status === "loading" ? (
               <div className="mt-2 h-8 w-full animate-pulse rounded-[var(--radius-sm)] bg-[rgb(var(--color-foreground))/0.1]" />

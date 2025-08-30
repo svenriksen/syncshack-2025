@@ -1,7 +1,31 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { updateWeeklyLeaderboard } from "@/lib/leaderboard";
+
+// Helper function to determine region from coordinates
+function getRegionFromCoordinates(lat: number, lng: number): string {
+  // Simple region detection based on coordinate ranges
+  if (lat >= 40 && lat <= 50 && lng >= -80 && lng <= -60) {
+    return "Northeast US";
+  } else if (lat >= 30 && lat <= 40 && lng >= -90 && lng <= -70) {
+    return "Southeast US";
+  } else if (lat >= 40 && lat <= 50 && lng >= -120 && lng <= -80) {
+    return "Western US";
+  } else if (lat >= 50 && lat <= 70 && lng >= -140 && lng <= -50) {
+    return "Canada";
+  } else if (lat >= 50 && lat <= 60 && lng >= -10 && lng <= 10) {
+    return "UK & Ireland";
+  } else if (lat >= 40 && lat <= 60 && lng >= -10 && lng <= 40) {
+    return "Europe";
+  } else if (lat >= 20 && lat <= 40 && lng >= 100 && lng <= 140) {
+    return "East Asia";
+  } else if (lat >= -40 && lat <= -10 && lng >= 110 && lng <= 155) {
+    return "Australia";
+  } else {
+    return "Other";
+  }
+}
 
 export const tripRouter = createTRPCRouter({
   // Create a new trip
@@ -167,6 +191,141 @@ export const tripRouter = createTRPCRouter({
         totalCoinsEarned: stats._sum.coinsAwarded || 0,
         weeklyDistanceKm,
         weeklyCO2Saved,
+      };
+    }),
+
+  // Get all trip data for heatmap (public endpoint for everyone's impact)
+  getAllTripsForHeatmap: publicProcedure
+    .input(
+      z.object({
+        timeRange: z.enum(["all", "week", "month"]).optional().default("all"),
+        includeInvalid: z.boolean().optional().default(false),
+      }).optional().default({})
+    )
+    .query(async ({ input }) => {
+      // Ensure input has default values
+      const { timeRange = "all", includeInvalid = false } = input || {};
+      const now = new Date();
+      let startDate: Date | undefined;
+
+      // Calculate start date based on time range
+      if (timeRange === "week") {
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (timeRange === "month") {
+        startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - 1);
+      }
+
+      // Build where clause
+      const whereClause: any = {};
+      if (startDate) {
+        whereClause.startedAt = {
+          gte: startDate,
+        };
+      }
+      if (!includeInvalid) {
+        whereClause.valid = true;
+      }
+
+      const trips = await db.trip.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          startLat: true,
+          startLng: true,
+          endLat: true,
+          endLng: true,
+          distanceM: true,
+          modeGuess: true,
+          valid: true,
+          startedAt: true,
+          polyline: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          startedAt: "desc",
+        },
+      });
+
+      // Process trip data for heatmap
+      const heatmapData = trips.map(trip => {
+        const co2Saved = (trip.distanceM / 1000) * 120; // grams
+        return {
+          id: trip.id,
+          startPoint: [trip.startLng, trip.startLat],
+          endPoint: [trip.endLng, trip.endLat],
+          distance: trip.distanceM,
+          co2Saved,
+          mode: trip.modeGuess,
+          valid: trip.valid,
+          date: trip.startedAt,
+          userName: trip.user.name || "Anonymous",
+          polyline: trip.polyline ? JSON.parse(trip.polyline) : null,
+        };
+      });
+
+      // Calculate aggregate statistics
+      const totalTrips = trips.length;
+      const validTrips = trips.filter(t => t.valid).length;
+      const totalDistance = trips.reduce((sum, t) => sum + t.distanceM, 0);
+      const totalCO2Saved = (totalDistance / 1000) * 120;
+      const uniqueUsers = new Set(trips.map(t => t.user.id)).size;
+
+      // Calculate region-based statistics (simplified by grouping by rough geographic areas)
+      const regionStats = new Map<string, {
+        trips: number;
+        validTrips: number;
+        distance: number;
+        co2Saved: number;
+        users: Set<string>;
+      }>();
+
+      trips.forEach(trip => {
+        // Simple region detection based on coordinates
+        const region = getRegionFromCoordinates(trip.startLat, trip.startLng);
+        const existing = regionStats.get(region) || {
+          trips: 0,
+          validTrips: 0,
+          distance: 0,
+          co2Saved: 0,
+          users: new Set<string>(),
+        };
+
+        existing.trips++;
+        if (trip.valid) existing.validTrips++;
+        existing.distance += trip.distanceM;
+        existing.co2Saved += (trip.distanceM / 1000) * 120;
+        existing.users.add(trip.user.id);
+
+        regionStats.set(region, existing);
+      });
+
+      const regionData = Array.from(regionStats.entries()).map(([region, stats]) => ({
+        region,
+        trips: stats.trips,
+        validTrips: stats.validTrips,
+        distance: stats.distance,
+        co2Saved: stats.co2Saved,
+        uniqueUsers: stats.users.size,
+      })).sort((a, b) => b.trips - a.trips);
+
+      return {
+        trips: heatmapData,
+        stats: {
+          totalTrips,
+          validTrips,
+          totalDistance,
+          totalCO2Saved,
+          uniqueUsers,
+          timeRange: timeRange,
+        },
+        regions: regionData,
       };
     }),
 

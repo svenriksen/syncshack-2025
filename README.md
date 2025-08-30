@@ -1,81 +1,145 @@
-# 🌱 GreenStride – MVP Spec
+# SyncShack 2025
 
-## 1. Problem & Goal
-- **Problem**: Students want to lower daily carbon footprint but lack consistent motivation.
-- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**;
+A gamified environmental impact tracking app that encourages sustainable transportation through trip tracking, virtual gardens, and community leaderboards.
 
----
+## Features
 
-## 2. Primary User Stories (MVP)
-1. User can **sign in** (Google/email) → see coin balance, streak, and **Start Trip** CTA.
-2. User can **choose a destination** and **start a trip**.
-3. During trip → **HUD** (time, distance, speed, polyline map).
-4. At finish → trip validated; if valid → **coins awarded** + **CO₂ saved** shown.
-5. User can **spend coins** to plant **virtual trees** in a garden grid.
-6. If user misses a day → newest tree **withers**, streak resets.
-7. **(Optional)** User can view a **weekly leaderboard**.
-8. User can view **impact totals** (distance, CO₂ saved).
+- **Trip Tracking**: Record and validate sustainable transportation trips
+- **Virtual Garden**: Plant trees with earned coins
+- **Leaderboards**: Weekly competitions and rankings
+- **Impact Visualization**: See your environmental impact and CO₂ savings
+- **Everyone's Impact**: Global heatmap showing collective environmental impact across regions
 
----
+## Getting Started
 
-## 3. Non-Goals (MVP)
-- No payments.
-- No real tree purchases.
-- No background tracking (tab must stay open).
-- No mobile-native apps.
+### Prerequisites
 
----
+- Node.js 18+ 
+- PostgreSQL database
+- Mapbox API key
 
-## 4. Functional Requirements
+### Installation
 
-### A. Auth
-- **NextAuth** with Google OAuth or magic-link email.
-- First login → creates `User` + `Profile`.
-- Redirect unauthenticated users → `/auth`.
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Copy `.env.example` to `.env` and configure your environment variables
+4. Set up the database: `npm run db:push`
+5. Start the development server: `npm run dev`
 
-### B. Trip Tracking & Validation
-- **Start trip**: pick destination, start geofence radius 120–150m.
-- **Validation rules**:
-    - Distance ≥ 500 m
-    - Duration ≥ 8 minutes
-    - Avg speed ≤ 15 km/h; no point > 30 km/h
-    - No “teleports” (Δ>200 m in 2s)
-    - Start & end within geofence
-- **Coins formula**: `coins = min(300, round(5 + 20 * distance_km))`.
-- **Mode guess**: walk/bike/unknown (based on avg speed).
+### Environment Variables
 
-### C. Garden
-- **Grid**: 8×10 tiles.
-- **Shop**: sapling (100), young (250), mature (600) coins.  (MIGHT ADD MORE)
-- **Wither**: the oldest tree withers if no valid trip that day.
+Create a `.env` file with the following variables:
 
-### D. Streak
-- +1 per day with ≥1 valid trip.
-- +10% coin multiplier/day, capped at +50%.
-- Reset if day missed; newest tree withers.
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
 
-### E. Leaderboard (OPTIONAL)
-- Weekly (Mon–Sun AEST).
-- Show top 10 + my rank.
+# Auth
+AUTH_SECRET="your-secret-key"
 
-### F. Impact
-- **CO₂ saved** = `distance_km × 120 g`.
-- Show weekly & all-time.
+# OAuth Providers (optional)
+DISCORD_CLIENT_ID="your-discord-client-id"
+DISCORD_CLIENT_SECRET="your-discord-client-secret"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
-### G. Progressive Web App & UX
-- Installable PWA (manifest + SW).
-- Toast: “Keep this tab open for best accuracy.”
-- Skeleton loading, error toasts, empty states.
+# Mapbox
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="your-mapbox-access-token"
+```
 
----
+## Mock Database Setup
 
-## 5. Non-Functional Requirements
-- **Performance**: HUD updates ≤ 1s after GPS sample.
-- **Reliability**: server validates deterministically.
-- **Security**: protected routes, Zod validation.
-- **Privacy**: only aggregates shown; user can delete trips.
-- **Timezone**: all streaks/leaderboards use `Australia/Sydney`.
+To populate the database with realistic test data for development and testing:
 
----
+### Option 1: Using the shell script
+```bash
+./mock-database.sh
+```
+
+### Option 2: Using npm script
+```bash
+npm run inject-test-data
+```
+
+### Option 3: Direct Node.js execution
+```bash
+node scripts/inject-test-data.js
+```
+
+### What the mock data includes:
+
+- **10 test users** with realistic profiles and avatars
+- **50-250 trips** across 8 global regions:
+  - Northeast US (NYC, Boston, Philadelphia)
+  - Southeast US (Atlanta, Miami, Jacksonville)
+  - Western US (San Francisco, Los Angeles, Seattle)
+  - Canada (Toronto, Montreal, Vancouver)
+  - UK & Ireland (London, Dublin, Edinburgh)
+  - Europe (Paris, Berlin, Rome)
+  - East Asia (Tokyo, Beijing, Seoul)
+  - Australia (Sydney, Melbourne, Perth)
+- **Virtual gardens** with various tree types (pine, bamboo, maple, bonsai, sakura)
+- **5 weeks of leaderboard data** including current and historical weeks
+- **Realistic trip validation** with some invalid trips and audit flags
+- **Proper CO₂ calculations** based on distance (120g CO₂ per km saved)
+
+### Testing the "Everyone's Impact" Feature
+
+After running the mock data script, you can test the heatmap visualization:
+
+1. Start the development server: `npm run dev`
+2. Navigate to: `http://localhost:3000/impact/everyone`
+3. Explore the interactive heatmap with:
+   - Trip density visualization
+   - Regional impact statistics
+   - Time range filtering
+   - Valid/invalid trip filtering
+   - Clickable trip points with detailed information
+
+## Development
+
+### Database Commands
+
+- `npm run db:push` - Push schema changes to database
+- `npm run db:studio` - Open Prisma Studio for database management
+- `npm run db:generate` - Generate Prisma client
+
+### Code Quality
+
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - Run TypeScript type checking
+- `npm run format:write` - Format code with Prettier
+
+## CO₂ Impact Calculation
+
+The app calculates environmental impact using the formula:
+```
+CO₂ saved = distance_km × 120 grams
+```
+
+This represents the CO₂ emissions avoided by choosing sustainable transportation over driving.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js
+- **Maps**: Mapbox GL JS
+- **Styling**: Tailwind CSS
+- **Type Safety**: TypeScript
+- **API**: tRPC for type-safe API routes
+- **3D Graphics**: Three.js with React Three Fiber
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
 
 
