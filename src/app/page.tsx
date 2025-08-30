@@ -3,15 +3,24 @@ import { Button } from "./_components/button";
 import { GardenPreview } from "./_components/garden-preview";
 import { api } from "@/trpc/server";
 
+
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
-  const coins = 0;
   const streak = 0;
   const multiplier = 0;
-
+  const { coins } = await api.coin.getBalance();
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="card p-5">
+          <div className="text-sm text-white/60">Coins</div>
+          <div className="mt-1 text-3xl font-semibold">{coins}</div>
+          <div className="mt-4">
+            <Link href="/trip">
+              <Button size="lg">Start Trip</Button>
+            </Link>
+          </div>
+        </div>
         <div className="card p-5">
           <div className="text-sm text-white/60">Coins</div>
           <div className="mt-1 text-3xl font-semibold">{coins}</div>
