@@ -11,6 +11,8 @@ import { houseIndices } from "@/lib/garden";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { ProtectedRoute } from "../_components/protected-route";
+import { redirect } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 type TreeType = RenderTreeType;
 
@@ -21,6 +23,9 @@ export default function GardenPage() {
   const [selected, setSelected] = useState<Exclude<TreeType, "empty">>("pine");
   const [mounted, setMounted] = useState(false);
   const [isLocalhost, setIsLocalhost] = useState(false);
+
+  const { data: session } = useSession();
+  if (!session) return redirect("/auth");
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {

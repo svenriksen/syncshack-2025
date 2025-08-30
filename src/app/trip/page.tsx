@@ -4,11 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "../_components/button";
 import { MapBox } from "../_components/map-box";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 export default function TripPage() {
   const [isTracking, setIsTracking] = useState(false);
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  const { data: session } = useSession();
+  if (!session) return redirect("/auth");
 
   const handleRouteUpdate = (newDistance: number, newDuration: number) => {
     setDistance(newDistance);

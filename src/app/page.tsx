@@ -8,9 +8,9 @@ import { redirect } from "next/navigation";
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
   
-  const {session: data} = await api.session.get();
+  const session = await api.session.get();
   // if not logged in, redirect to auth
-  if (!data) {
+  if (!session) {
     return redirect("/auth");
   }
   

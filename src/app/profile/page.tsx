@@ -28,6 +28,8 @@ export default async function ProfilePage() {
     stats: data.stats,
   } as const;
 
+
+  
   return (
     <div className="flex min-h-[85svh] flex-col gap-6">
       {/* Hero */}
