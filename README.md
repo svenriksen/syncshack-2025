@@ -2,7 +2,7 @@
 
 ## 1. Problem & Goal
 - **Problem**: Students want to lower daily carbon footprint but lack consistent motivation.
-- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**; keep cheating hard enough to be annoying.
+- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**;
 
 ---
 
@@ -47,7 +47,7 @@
 ### C. Garden
 - **Grid**: 8×10 tiles.
 - **Shop**: sapling (100), young (250), mature (600) coins.  (MIGHT ADD MORE)
-- **Wither**: oldest tree withers if no valid trip that day.
+- **Wither**: the oldest tree withers if no valid trip that day.
 
 ### D. Streak
 - +1 per day with ≥1 valid trip.
@@ -77,83 +77,5 @@
 - **Timezone**: all streaks/leaderboards use `Australia/Sydney`.
 
 ---
-
-## 6. Data Model (Prisma)
-
-```prisma
-model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  image         String?
-  createdAt     DateTime @default(now())
-  profile       Profile?
-  trips         Trip[]
-  gardens       Garden[]
-  weeklyEntries LeaderboardWeek[]
-}
-
-model Profile {
-  userId              String  @id
-  user                User    @relation(fields: [userId], references: [id])
-  totalCoins          Int     @default(0)
-  currentStreak       Int     @default(0)
-  longestStreak       Int     @default(0)
-  treesPlantedVirtual Int     @default(0)
-  treesPlantedReal    Int     @default(0)
-  lastActiveDate      DateTime?
-}
-
-model Trip {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  startLat     Float
-  startLng     Float
-  endLat       Float
-  endLng       Float
-  distanceM    Int      @default(0)
-  durationS    Int      @default(0)
-  modeGuess    String   @default("unknown")
-  valid        Boolean  @default(false)
-  coinsAwarded Int      @default(0)
-  startedAt    DateTime
-  endedAt      DateTime?
-  polyline     String   // JSON of {lat,lng,t,s}
-  createdAt    DateTime @default(now())
-  flags        AuditFlag[]
-}
-
-model AuditFlag {
-  id        String   @id @default(cuid())
-  tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id])
-  reason    String
-  createdAt DateTime @default(now())
-}
-
-enum TreeType { sapling, young, mature, withered }
-
-model Garden {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  type      TreeType
-  x         Int
-  y         Int
-  status    String   @default("alive")
-  plantedAt DateTime @default(now())
-}
-
-model LeaderboardWeek {
-  id            String   @id @default(cuid())
-  weekStartDate DateTime
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  coins         Int      @default(0)
-
-  @@unique([weekStartDate, userId])
-  @@index([weekStartDate, coins])
-}
 
 
