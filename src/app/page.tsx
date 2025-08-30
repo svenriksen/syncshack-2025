@@ -2,13 +2,13 @@ import Link from "next/link";
 import { Button } from "./_components/button";
 import { GardenPreview } from "./_components/garden-preview";
 import { DEFAULT_COLS, DEFAULT_ROWS } from "./_components/garden-config";
+import { api } from "@/trpc/server";
 
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
   const coins = 0;
   const streak = 0;
   const multiplier = 0;
-
   return (
     <div className="flex min-h-[85svh] flex-col gap-6">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
