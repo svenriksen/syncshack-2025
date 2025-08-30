@@ -10,8 +10,8 @@ import { Navigation } from "./_components/navigation";
 
 export const metadata: Metadata = {
   title: {
-    default: "Urban Garden",
-    template: "%s • Urban Garden",
+    default: "GreenStride",
+    template: "%s • GreenStride",
   },
   description: "Walk, bike, grow your virtual garden.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
@@ -34,7 +34,7 @@ export default function RootLayout({
               <div className="container-slim flex items-center justify-between py-3">
                 <a href="/" className="flex items-center gap-2 font-semibold">
                   <span className="inline-block h-2 w-2 rounded-full bg-[rgb(var(--color-primary))] shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
-                  Urban Garden
+                  GreenStride
                 </a>
                 <Navigation />
               </div>
