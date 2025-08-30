@@ -26,13 +26,7 @@ export function GardenPreview({ cols, rows, tiles, height, className = "relative
 
   const { data: gardenData } = api.coin.getGarden.useQuery();
   
-  const gardenTiles = gardenData?.tiles ?? Array.from({ length: 100 }, () => "empty") as (
-    | "empty"
-    | "sapling"
-    | "young"
-    | "mature"
-    | "withered"
-  )[];
+  const gardenTiles = (gardenData?.tiles as TreeType[] | undefined) ?? (Array.from({ length: 100 }, () => "empty") as TreeType[]);
 
   return (
     <div className="h-[240px] md:h-[65vh]">

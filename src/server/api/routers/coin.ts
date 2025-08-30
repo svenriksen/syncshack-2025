@@ -6,13 +6,15 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { db } from "@/server/db";
+import { isHouse } from "@/lib/garden";
 
-// Tree prices from the garden shop
+// Tree prices from the garden shop (Japanese-themed)
 const TREE_PRICES = {
-  sapling: 100,
-  young: 250,
-  mature: 600,
-  withered: 0, // Free to place withered trees
+  pine: 150,
+  bamboo: 200,
+  maple: 300,
+  bonsai: 500,
+  sakura: 650,
 } as const;
 
 export const coinRouter = createTRPCRouter({
@@ -39,6 +41,8 @@ export const coinRouter = createTRPCRouter({
       // Convert to 10x10 grid format
       const tiles = new Array(100).fill("empty");
       gardens.forEach((garden) => {
+        // Hide any existing trees on house tiles from the tiles array
+        if (isHouse(garden.x, garden.y, 10, 10)) return;
         const index = garden.y * 10 + garden.x;
         if (index >= 0 && index < 100) {
           tiles[index] = garden.type;
@@ -57,13 +61,19 @@ export const coinRouter = createTRPCRouter({
       z.object({
         x: z.number().min(0).max(9),
         y: z.number().min(0).max(9),
-        // Withered trees are no longer plantable via API
-        type: z.enum(["sapling", "young", "mature"]),
+        type: z.enum(["pine", "bamboo", "maple", "bonsai", "sakura"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { x, y, type } = input;
       const userId = ctx.session.user.id;
+      // Disallow planting on house tiles (center 2x2)
+      if (isHouse(x, y, 10, 10)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You can't plant on the house tiles.",
+        });
+      }
 
       // Get user's current coin balance
       const profile = await db.profile.findUnique({
@@ -168,9 +178,9 @@ export const coinRouter = createTRPCRouter({
         });
       }
 
-      // Calculate refund (50% of original price for non-withered trees)
-      const originalPrice = TREE_PRICES[existingTree.type as keyof typeof TREE_PRICES];
-      const refund = existingTree.type !== "withered" ? Math.floor(originalPrice * 0.5) : 0;
+      // Calculate refund (50% of original price)
+      const originalPrice = TREE_PRICES[existingTree.type as keyof typeof TREE_PRICES] ?? 0;
+      const refund = Math.floor(originalPrice * 0.5);
 
       // Use transaction to ensure atomicity
       const result = await db.$transaction(async (tx) => {

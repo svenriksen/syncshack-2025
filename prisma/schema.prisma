@@ -11,10 +11,11 @@ datasource db {
 }
 
 enum TreeType {
-  sapling
-  young
-  mature
-  withered
+  pine
+  bamboo
+  maple
+  bonsai
+  sakura
 }
 
 // Necessary for Next auth
