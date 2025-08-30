@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "../_components/button";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "OAuthAccountNotLinked") {
+      setMessage("This email is already associated with a different sign-in method. Please use the same provider you originally signed up with.");
+    }
+  }, [searchParams]);
 
   const handleDiscordSignIn = async () => {
     setIsLoading(true);
