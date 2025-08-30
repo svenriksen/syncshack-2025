@@ -115,144 +115,148 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
   };
 
   useEffect(() => {
-    if (map.current || !mapContainer.current || !process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) return;
+    if (!mapContainer.current || !process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) return;
 
     // Set the access token globally for Mapbox GL
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
     // Initialize map only once
-    const initializedMap = new mapboxgl.Map({
-      accessToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [lng, lat],
-      zoom: zoom,
-    });
-
-    map.current = initializedMap;
-
-    // Add navigation controls
-    initializedMap.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    // Add directions control
-    const directionsControl = new MapboxDirections({
-      accessToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
-      unit: "metric",
-      profile: "mapbox/walking",
-      alternatives: true,
-      congestion: true,
-      controls: {
-        inputs: false,
-        instructions: false,
-      },
-      interactive: true,
-      placeholderOrigin: "Choose a starting place",
-      placeholderDestination: "Choose destination",
-      flyTo: false,
-      styles: [
-        {
-          "id": "directions-route-line",
-          "type": "line",
-          "source": "directions",
-          "layout": {
-            "line-cap": "round",
-            "line-join": "round"
-          },
-          "paint": {
-            "line-color": "#3BB2D0",
-            "line-width": 4
-          },
-          "filter": [
-            "all",
-            ["in", "$type", "LineString"],
-            ["in", "route", "selected"]
-          ]
-        },
-        {
-          "id": "directions-hover-point",
-          "type": "circle",
-          "source": "directions",
-          "paint": {
-            "circle-radius": 8,
-            "circle-color": "#3BB2D0"
-          },
-          "filter": [
-            "all",
-            ["in", "$type", "Point"],
-            ["in", "id", "hover"]
-          ]
-        },
-        {
-          "id": "directions-origin-point",
-          "type": "circle",
-          "source": "directions",
-          "paint": {
-            "circle-radius": 12,
-            "circle-color": "#3BB2D0"
-          },
-          "filter": [
-            "all",
-            ["in", "$type", "Point"],
-            ["in", "marker-symbol", "A"]
-          ]
-        },
-        {
-          "id": "directions-destination-point",
-          "type": "circle",
-          "source": "directions",
-          "paint": {
-            "circle-radius": 12,
-            "circle-color": "#FF3B30"
-          },
-          "filter": [
-            "all",
-            ["in", "$type", "Point"],
-            ["in", "marker-symbol", "B"]
-          ]
-        }
-      ]
-    });
-
-    map.current.addControl(directionsControl, "top-left");
-    directions.current = directionsControl;
-
-    // Update coordinates when map moves
-    initializedMap.on("moveend", () => {
-      if (!initializedMap) return;
-      const center = initializedMap.getCenter();
-      setLng(Number(center.lng.toFixed(4)));
-      setLat(Number(center.lat.toFixed(4)));
-      setZoom(Number(initializedMap.getZoom().toFixed(2)));
-    });
-
-    // Listen for route updates
-    if (onRouteUpdate) {
-      directionsControl.on("route", (event: any) => {
-        if (event.route && event.route[0]) {
-          const route = event.route[0];
-          onRouteUpdate(route.distance / 1000, route.duration / 60);
-        }
+    if (!map.current) {
+      const initializedMap = new mapboxgl.Map({
+        accessToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [lng, lat],
+        zoom: zoom,
       });
-    }
 
-    // Get user's location and center map
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (map.current) {
-          map.current.flyTo({
+      map.current = initializedMap;
+
+      // Add navigation controls
+      initializedMap.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+      // Add directions control
+      const directionsControl = new MapboxDirections({
+        accessToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
+        unit: "metric",
+        profile: "mapbox/walking",
+        alternatives: true,
+        congestion: true,
+        controls: {
+          inputs: false,
+          instructions: false,
+        },
+        interactive: true,
+        placeholderOrigin: "Choose a starting place",
+        placeholderDestination: "Choose destination",
+        flyTo: false,
+        styles: [
+          {
+            "id": "directions-route-line",
+            "type": "line",
+            "source": "directions",
+            "layout": {
+              "line-cap": "round",
+              "line-join": "round"
+            },
+            "paint": {
+              "line-color": "#3BB2D0",
+              "line-width": 4
+            },
+            "filter": [
+              "all",
+              ["in", "$type", "LineString"],
+              ["in", "route", "selected"]
+            ]
+          },
+          {
+            "id": "directions-hover-point",
+            "type": "circle",
+            "source": "directions",
+            "paint": {
+              "circle-radius": 8,
+              "circle-color": "#3BB2D0"
+            },
+            "filter": [
+              "all",
+              ["in", "$type", "Point"],
+              ["in", "id", "hover"]
+            ]
+          },
+          {
+            "id": "directions-origin-point",
+            "type": "circle",
+            "source": "directions",
+            "paint": {
+              "circle-radius": 12,
+              "circle-color": "#3BB2D0"
+            },
+            "filter": [
+              "all",
+              ["in", "$type", "Point"],
+              ["in", "marker-symbol", "A"]
+            ]
+          },
+          {
+            "id": "directions-destination-point",
+            "type": "circle",
+            "source": "directions",
+            "paint": {
+              "circle-radius": 12,
+              "circle-color": "#FF3B30"
+            },
+            "filter": [
+              "all",
+              ["in", "$type", "Point"],
+              ["in", "marker-symbol", "B"]
+            ]
+          }
+        ]
+      });
+
+      initializedMap.addControl(directionsControl, "top-left");
+      directions.current = directionsControl;
+
+      // Update coordinates when map moves
+      initializedMap.on("moveend", () => {
+        const center = initializedMap.getCenter();
+        setLng(Number(center.lng.toFixed(4)));
+        setLat(Number(center.lat.toFixed(4)));
+        setZoom(Number(initializedMap.getZoom().toFixed(2)));
+      });
+
+      // Listen for route updates
+      if (onRouteUpdate) {
+        directionsControl.on("route", (event: any) => {
+          if (event.route && event.route[0]) {
+            const route = event.route[0];
+            setTripStats(prev => ({
+              ...prev,
+              distance: route.distance / 1000,
+            }));
+            onRouteUpdate(route.distance / 1000, route.duration / 60);
+          }
+        });
+      }
+
+      // Get user's location and center map
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          initializedMap.flyTo({
             center: [position.coords.longitude, position.coords.latitude],
             zoom: 14,
           });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
         }
-      },
-      (error) => {
-        console.error("Error getting location:", error);
-      }
-    );
+      );
+    }
 
     return () => {
       if (map.current) {
         map.current.remove();
+        map.current = null;
       }
     };
   }, []);
