@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
-import { OrthographicCamera } from "@react-three/drei";
+import { OrthographicCamera, Bounds } from "@react-three/drei";
 import * as THREE from "three";
 
 export type TreeType = "empty" | "sapling" | "young" | "mature" | "withered";
@@ -15,6 +15,7 @@ export type GardenIso3DProps = {
   onTileClick?: (index: number) => void;
   className?: string;
   height?: string; // CSS height, default "min(520px, 60vh)"
+  projection?: "dimetric" | "isometric"; // camera style
 };
 
 function isTree(t: TreeType | undefined): t is Exclude<TreeType, "empty"> {
@@ -176,7 +177,7 @@ function AimCamera({ target = [0, 0, 0] as [number, number, number] }) {
   return null;
 }
 
-export function GardenIso3D({ cols = 10, rows = 8, tiles, onTileClick, className = "", height = "min(520px, 60vh)" }: GardenIso3DProps) {
+export function GardenIso3D({ cols = 10, rows = 8, tiles, onTileClick, className = "", height = "min(520px, 60vh)", projection = "dimetric" }: GardenIso3DProps) {
   const total = rows * cols;
   const normalized = tiles.slice(0, total).concat(Array(Math.max(0, total - tiles.length)).fill("empty"));
   const { positions, width, depth } = useGridPositions(cols, rows);
@@ -184,6 +185,11 @@ export function GardenIso3D({ cols = 10, rows = 8, tiles, onTileClick, className
   const handleTile = (i: number) => onTileClick?.(i);
 
   const ambientColor = useMemo(() => new THREE.Color(0xffffff), []);
+
+  // Camera position by projection
+  const k = 8;
+  const camPos: [number, number, number] =
+    projection === "isometric" ? [k, k * Math.SQRT2, k] : [k, k, k];
 
   return (
     <div className={className} style={{ width: "100%", height }}>
@@ -196,34 +202,37 @@ export function GardenIso3D({ cols = 10, rows = 8, tiles, onTileClick, className
         <directionalLight position={[3, 6, 3]} intensity={0.65} />
 
         {/* Orthographic camera with isometric-like angle */}
-        {/* 45-45 dimetric (game-like): 45° yaw and 45° tilt */}
-        <OrthographicCamera makeDefault position={[8, 8, 8]} near={0.1} far={100} zoom={55} />
+        {/* Camera: 45–45 dimetric or classic isometric (equal-axes) */}
+        <OrthographicCamera makeDefault position={camPos} near={0.1} far={100} zoom={55} />
         <AimCamera target={[0, 0, 0]} />
-        {/* World un-rotated; isometric comes purely from camera */}
-        <group rotation={[0, 0, 0]} scale={[0.9, 0.9, 0.9]}>
-          {/* Island base: dirt block with grass carpet */}
-          <group position={[0, -0.22, 0]}>
-            <mesh>
-              <boxGeometry args={[width + 1.2, 0.6, depth + 1.2]} />
-              <meshStandardMaterial color={new THREE.Color("#6b4226")} roughness={1} />
-            </mesh>
-            <mesh position={[0, 0.31, 0]}>
-              <boxGeometry args={[width + 1.1, 0.06, depth + 1.1]} />
-              <meshStandardMaterial color={new THREE.Color("#84cc16")} roughness={0.9} />
-            </mesh>
+        {/* Auto-fit the scene into view with a margin */}
+        <Bounds fit observe margin={1.1} clip>
+          {/* World un-rotated; isometric comes purely from camera */}
+          <group rotation={[0, 0, 0]} scale={[1, 1, 1]}>
+            {/* Island base: dirt block with grass carpet */}
+            <group position={[0, -0.22, 0]}>
+              <mesh>
+                <boxGeometry args={[width + 1.2, 0.6, depth + 1.2]} />
+                <meshStandardMaterial color={new THREE.Color("#6b4226")} roughness={1} />
+              </mesh>
+              <mesh position={[0, 0.31, 0]}>
+                <boxGeometry args={[width + 1.1, 0.06, depth + 1.1]} />
+                <meshStandardMaterial color={new THREE.Color("#84cc16")} roughness={0.9} />
+              </mesh>
+            </group>
+            {/* Tiles */}
+            {positions.map((pos, i) => {
+              const t = normalized[i];
+              return (
+                <group key={i} position={pos}>
+                  <TileMesh i={i} position={[0, 0, 0]} onClick={handleTile} checker={(i + Math.floor(i / cols)) % 2 === 0} />
+                  {/* Tree */}
+                  {isTree(t) ? <TreeMesh type={t} /> : null}
+                </group>
+              );
+            })}
           </group>
-          {/* Tiles */}
-          {positions.map((pos, i) => {
-            const t = normalized[i];
-            return (
-              <group key={i} position={pos}>
-                <TileMesh i={i} position={[0, 0, 0]} onClick={handleTile} checker={(i + Math.floor(i / cols)) % 2 === 0} />
-                {/* Tree */}
-                {isTree(t) ? <TreeMesh type={t} /> : null}
-              </group>
-            );
-          })}
-        </group>
+        </Bounds>
       </Canvas>
     </div>
   );
