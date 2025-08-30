@@ -1,16 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-
-// Helper function to get the start of the current week (Monday)
-function getWeekStartDate(date: Date = new Date()): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { getWeekStartDate } from "@/lib/leaderboard";
 
 export const leaderboardRouter = createTRPCRouter({
   // Get current week's leaderboard
@@ -204,5 +195,49 @@ export const leaderboardRouter = createTRPCRouter({
       });
 
       return { success: true, message: "Test data added" };
+    }),
+
+  // Development endpoint to check leaderboard data (remove in production)
+  debugLeaderboard: protectedProcedure
+    .query(async ({ ctx }) => {
+      const weekStart = getWeekStartDate();
+      
+      const allEntries = await db.leaderboardWeek.findMany({
+        where: {
+          weekStartDate: weekStart,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          coins: "desc",
+        },
+      });
+
+      const userEntry = await db.leaderboardWeek.findUnique({
+        where: {
+          weekStartDate_userId: {
+            weekStartDate: weekStart,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+
+      return {
+        weekStart,
+        totalEntries: allEntries.length,
+        entries: allEntries.map(entry => ({
+          userId: entry.userId,
+          userName: entry.user.name || entry.user.email,
+          coins: entry.coins,
+        })),
+        currentUserEntry: userEntry,
+      };
     }),
 });

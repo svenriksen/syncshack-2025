@@ -24,6 +24,9 @@ export default async function Home() {
   
   // Get top 5 players
   const topPlayers = leaderboardData.leaderboard.slice(0, 5);
+  
+  // Get today's trips
+  const todayTrips = await api.trip.getTodayTrips();
 
   return (
     <div className="flex min-h-[85svh] flex-col gap-6">
@@ -44,8 +47,15 @@ export default async function Home() {
         </div>
         <div className="card p-5">
           <div className="text-sm text-[rgb(var(--color-foreground))/0.6]">Today</div>
-          <div className="mt-1 text-3xl font-semibold">No trips yet</div>
-          <div className="mt-2 text-sm text-[rgb(var(--color-foreground))/0.6]">Keep this tab open for best accuracy.</div>
+          <div className="mt-1 text-3xl font-semibold">
+            {todayTrips.length > 0 ? `${todayTrips.length} trip${todayTrips.length === 1 ? '' : 's'}` : 'No trips yet'}
+          </div>
+          <div className="mt-2 text-sm text-[rgb(var(--color-foreground))/0.6]">
+            {todayTrips.length > 0 
+              ? `${todayTrips.filter(t => t.valid).length} valid trip${todayTrips.filter(t => t.valid).length === 1 ? '' : 's'}`
+              : 'Keep this tab open for best accuracy.'
+            }
+          </div>
         </div>
       </section>
 

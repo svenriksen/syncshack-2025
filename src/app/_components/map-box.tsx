@@ -22,6 +22,7 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
   const [zoom, setZoom] = useState(9);
   const [endLocation, setEndLocation] = useState("");
   const addCoins = api.coin.addCoins.useMutation();
+  const completeTrip = api.trip.completeTrip.useMutation();
   // Allow both Search Box and Geocoding shapes
   const [suggestions, setSuggestions] = useState<Array<any>>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -603,15 +604,47 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
       return;
     }
 
-    const check = (lng: number, lat: number) => {
+    const check = async (lng: number, lat: number) => {
       const here: [number, number] = [lng, lat];
       const dist = haversineMeters(here, destCoords);
       const threshold = 500; // meters
       if (dist <= threshold) {
         setRewarded(true);
-        alert("🎉 Arrived! Reward granted.");
-        const coinsEarned = Math.max(1, Math.round(tripStats.distance * 10));
-        addCoins.mutate({ amount: coinsEarned });
+        
+        // Calculate trip data
+        const startTime = tripStats.startTime;
+        const endTime = Date.now();
+        const durationS = Math.round((endTime - startTime) / 1000);
+        const distanceM = Math.round(tripStats.traveled * 1000);
+        
+        // Create polyline data (simplified for now)
+        const polyline = JSON.stringify([
+          { lat: currentPosition?.coords.latitude || 0, lng: currentPosition?.coords.longitude || 0, t: startTime },
+          { lat, lng, t: endTime }
+        ]);
+
+        try {
+          // Save trip to database
+          const result = await completeTrip.mutateAsync({
+            startLat: currentPosition?.coords.latitude || 0,
+            startLng: currentPosition?.coords.longitude || 0,
+            endLat: lat,
+            endLng: lng,
+            distanceM,
+            durationS,
+            polyline,
+          });
+
+          if (result.isValid) {
+            alert(`🎉 Trip completed! Earned ${result.coinsAwarded} coins.`);
+            setCoins(result.coinsAwarded);
+          } else {
+            alert("Trip completed but didn't meet validation criteria. No coins awarded.");
+          }
+        } catch (error) {
+          console.error("Error saving trip:", error);
+          alert("Error saving trip. Please try again.");
+        }
       } else {
         alert(`Not there yet. You are ~${Math.round(dist)} m away.`);
       }
@@ -619,15 +652,15 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
 
     if (currentPosition) {
       const { latitude, longitude } = currentPosition.coords;
-      check(longitude, latitude);
+      await check(longitude, latitude);
       return;
     }
 
 
     navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const { latitude, longitude } = pos.coords;
-          check(longitude, latitude);
+          await check(longitude, latitude);
         },
         (err) => {
           console.error("Geolocation error:", err);

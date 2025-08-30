@@ -270,6 +270,9 @@ export const coinRouter = createTRPCRouter({
         },
       });
 
+      // Update weekly leaderboard with starting coins
+      await updateWeeklyLeaderboard(userId, 1000);
+
       return {
         success: true,
         newBalance: profile.totalCoins,

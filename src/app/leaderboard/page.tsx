@@ -8,6 +8,7 @@ export default function LeaderboardPage() {
   const { data: leaderboardData, isLoading, error, refetch } = api.leaderboard.getWeeklyLeaderboard.useQuery();
   const { data: userRank, refetch: refetchUserRank } = api.leaderboard.getUserRank.useQuery();
   const addTestData = api.leaderboard.addTestData.useMutation();
+  const debugLeaderboard = api.leaderboard.debugLeaderboard.useQuery();
 
   const handleRefresh = () => {
     refetch();
@@ -68,7 +69,7 @@ export default function LeaderboardPage() {
     return rank.toString();
   };
 
-  return (
+    return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Weekly Leaderboard</h1>
@@ -85,6 +86,12 @@ export default function LeaderboardPage() {
             className="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20"
           >
             Refresh
+          </button>
+          <button
+            onClick={() => console.log('Debug data:', debugLeaderboard.data)}
+            className="text-sm bg-yellow-500/20 px-3 py-1 rounded hover:bg-yellow-500/30 text-yellow-400"
+          >
+            Debug
           </button>
           <Link href="/" className="text-sm text-[rgb(var(--color-primary))] hover:underline">Back</Link>
         </div>
