@@ -2,12 +2,34 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./button";
 
 export function Navigation() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => 'dark');
+
+  // Initialize theme on mount from localStorage or prefers-color-scheme
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const stored = localStorage.getItem('theme');
+    let next: 'dark' | 'light' = 'dark';
+    if (stored === 'light' || stored === 'dark') {
+      next = stored;
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      next = 'light';
+    }
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try { localStorage.setItem('theme', next); } catch {}
+    if (typeof document !== 'undefined') document.documentElement.setAttribute('data-theme', next);
+  };
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
@@ -21,6 +43,17 @@ export function Navigation() {
         <Link className="hover:text-white" href="/garden">Garden</Link>
         <Link className="hover:text-white" href="/leaderboard">Leaderboard</Link>
         <Link className="hover:text-white" href="/impact">Impact</Link>
+
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="rounded-[var(--radius-sm)] px-2 py-1.5 text-xs outline outline-1 outline-white/10 hover:bg-white/10"
+          aria-label="Toggle theme"
+          title="Toggle theme"
+        >
+          {theme === 'light' ? 'Light' : 'Dark'}
+        </button>
 
         {status === "loading" ? (
           <div className="ml-2 h-8 w-16 animate-pulse rounded-[var(--radius-sm)] bg-white/10" />
@@ -67,6 +100,13 @@ export function Navigation() {
       {open && (
         <div className="absolute right-0 top-10 z-50 w-56 rounded-[var(--radius-md)] bg-[rgb(var(--color-card))] p-3 shadow-[var(--shadow-lg)] md:hidden">
           <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => { toggleTheme(); setOpen(false); }}
+              className="mb-1 rounded-[var(--radius-sm)] px-3 py-2 text-left outline outline-1 outline-white/10 hover:bg-white/10"
+            >
+              Toggle theme: {theme === 'light' ? 'Light' : 'Dark'}
+            </button>
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-white/10" href="/trip" onClick={() => setOpen(false)}>Trip</Link>
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-white/10" href="/garden" onClick={() => setOpen(false)}>Garden</Link>
             <Link className="rounded-[var(--radius-sm)] px-3 py-2 hover:bg-white/10" href="/leaderboard" onClick={() => setOpen(false)}>Leaderboard</Link>

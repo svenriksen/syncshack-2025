@@ -5,6 +5,84 @@ import { Canvas, useThree, invalidate, useFrame } from "@react-three/fiber";
 import { OrthographicCamera, Bounds } from "@react-three/drei";
 import * as THREE from "three";
 
+// Lightweight procedural texture generator (noise-based) for PBR-like detail
+function createNoiseTexture({
+  size = 128,
+  scale = 8,
+  contrast = 1,
+  seed = 1,
+}: { size?: number; scale?: number; contrast?: number; seed?: number } = {}) {
+  const rand = (function () {
+    // xorshift32 for deterministic noise
+    let x = seed || 1;
+    return () => {
+      x ^= x << 13;
+      x ^= x >>> 17;
+      x ^= x << 5;
+      return ((x < 0 ? ~x + 1 : x) % 100000) / 100000;
+    };
+  })();
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      // Simple value noise via multi-octave random hash (cheap)
+      const nx = x / size;
+      const ny = y / size;
+      const f = (fx: number, fy: number) => {
+        const i = Math.floor(fx * scale);
+        const j = Math.floor(fy * scale);
+        const h = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+        return (h - Math.floor(h));
+      };
+      let n = 0;
+      let amp = 1;
+      let freq = 1;
+      for (let o = 0; o < 4; o++) {
+        n += f(nx * freq + rand() * 0.01, ny * freq + rand() * 0.01) * amp;
+        amp *= 0.5;
+        freq *= 2;
+      }
+      n = Math.pow(n / 1.875, contrast);
+      const v = Math.max(0, Math.min(255, Math.floor(n * 255)));
+      const idx = (y * size + x) * 4;
+      data[idx] = v;
+      data[idx + 1] = v;
+      data[idx + 2] = v;
+      data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.minFilter = THREE.LinearMipMapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  return tex;
+}
+
+// Simple radial-gradient sun texture (top-level)
+function createSunTexture({ size = 128, inner = '#fff7d6', outer = 'rgba(255, 183, 77, 0)' }: { size?: number; inner?: string; outer?: string } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.05, size / 2, size / 2, size * 0.5);
+  g.addColorStop(0, inner);
+  g.addColorStop(1, outer);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(canvas);
+  (tex as any).colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearMipMapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
 // Global cloud manager to decouple clouds from React lifecycles
 type CloudSlot = { g: THREE.Group; active: boolean; speed: number; scale: number };
 type CloudBounds = { left: number; right: number; minY: number; maxY: number; minZ: number; maxZ: number };
@@ -21,8 +99,6 @@ const cloudManager = (() => {
   const spawnMaxSec = 3.2;
   let nextSpawnAtSec = 0;
   let running = false;
-  let rafId: number | null = null;
-  let lastTs = 0;
 
   const ensureInit = () => {
     if (slots.length) return;
@@ -36,10 +112,10 @@ const cloudManager = (() => {
         (m as any).raycast = () => null;
         g.add(m);
       };
-      add(new THREE.SphereGeometry(0.35, 16, 16), 0, 0, 0, 0.95);
-      add(new THREE.SphereGeometry(0.28, 16, 16), 0.3, 0.05, -0.05, 0.92);
-      add(new THREE.SphereGeometry(0.26, 16, 16), -0.32, 0.02, 0.04, 0.92);
-      add(new THREE.SphereGeometry(0.22, 16, 16), 0.05, 0.12, 0.06, 0.9);
+      add(new THREE.SphereGeometry(0.35, 16, 16), 0, 0, 0, 0.98);
+      add(new THREE.SphereGeometry(0.28, 16, 16), 0.3, 0.05, -0.05, 0.96);
+      add(new THREE.SphereGeometry(0.26, 16, 16), -0.32, 0.02, 0.04, 0.96);
+      add(new THREE.SphereGeometry(0.22, 16, 16), 0.05, 0.12, 0.06, 0.94);
       g.visible = false;
       root.add(g);
       slots.push({ g, active: false, speed: 0.3, scale: 1 });
@@ -49,7 +125,8 @@ const cloudManager = (() => {
   const activate = (slot: CloudSlot) => {
     slot.active = true;
     slot.scale = 0.7 + Math.random() * 0.5;
-    slot.speed = 0.25 + Math.random() * 0.25;
+    // Increase speed so motion is clearly visible
+    slot.speed = 0.8 + Math.random() * 0.6; // units per second
     const y = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
     const z = bounds.minZ + Math.random() * (bounds.maxZ - bounds.minZ);
     slot.g.position.set(bounds.left, y, z);
@@ -62,32 +139,23 @@ const cloudManager = (() => {
     slot.g.visible = false;
   };
 
-  const tick = (ts: number) => {
+  const frame = (dtSec: number) => {
     if (!running) return;
-    if (!lastTs) lastTs = ts;
-    const delta = Math.min(0.05, (ts - lastTs) / 1000); // clamp delta
-    lastTs = ts;
-
+    const clamped = Math.min(0.05, Math.max(0, dtSec));
     // move active
     for (const s of slots) {
       if (!s.active) continue;
-      s.g.position.x += s.speed * delta;
+      s.g.position.x += s.speed * clamped;
       if (s.g.position.x > bounds.right + 0.2) deactivate(s);
     }
-
-    // spawn with randomized interval
-    const nowSec = lastTs / 1000;
-    if (nowSec >= nextSpawnAtSec) {
+    // spawn with randomized interval (advance timer by dt)
+    nextSpawnAtSec -= clamped;
+    if (nextSpawnAtSec <= 0) {
       const open = slots.find((s) => !s.active);
       if (open) activate(open);
       const delay = spawnMinSec + Math.random() * (spawnMaxSec - spawnMinSec);
-      nextSpawnAtSec = nowSec + delay;
+      nextSpawnAtSec = delay;
     }
-
-    // ensure renderer draws this frame even in demand mode
-    try { invalidate(); } catch {}
-
-    rafId = window.requestAnimationFrame(tick);
   };
 
   return {
@@ -97,12 +165,12 @@ const cloudManager = (() => {
       if (!scene.children.includes(root)) scene.add(root);
       if (!running) {
         running = true;
-        lastTs = 0;
-        // schedule first spawn randomly
-        const startSec = 0;
+        // spawn one immediately for instant feedback
+        const open = slots.find((s) => !s.active);
+        if (open) activate(open);
+        // schedule next spawn (seconds from now)
         const delay = spawnMinSec + Math.random() * (spawnMaxSec - spawnMinSec);
-        nextSpawnAtSec = startSec + delay;
-        rafId = window.requestAnimationFrame(tick);
+        nextSpawnAtSec = delay;
       }
     },
     setBounds(b: CloudBounds) {
@@ -110,11 +178,8 @@ const cloudManager = (() => {
     },
     stop() {
       running = false;
-      if (rafId !== null) {
-        window.cancelAnimationFrame(rafId);
-        rafId = null;
-      }
     },
+    frame,
   };
 })();
 
@@ -156,17 +221,20 @@ function TileMesh({
   hovered,
   checker,
   geoms,
+  maps,
 }: {
   i: number;
   position: [number, number, number];
   hovered: boolean;
   checker: boolean;
   geoms: { base: THREE.BoxGeometry; top: THREE.BoxGeometry; edge: THREE.BoxGeometry };
+  maps: { grass: THREE.Texture; grassRough?: THREE.Texture; dirt: THREE.Texture; dirtRough?: THREE.Texture };
 }) {
   const ref = useRef<THREE.Mesh>(null!);
-  // Stylized grass tile colors, memoized to avoid recreating per render
-  const topColor = useMemo(() => new THREE.Color(checker ? "#a3e635" : "#84cc16"), [checker]);
-  const topColorHover = useMemo(() => new THREE.Color("#b4f03b"), []);
+  // Stylized grass tile colors (lightened), memoized to avoid recreating per render
+  // Alternating tiles use slightly different light greens for realism
+  const topColor = useMemo(() => new THREE.Color(checker ? "#eaffb8" : "#dcfda5"), [checker]);
+  const topColorHover = useMemo(() => new THREE.Color("#fbffcf"), []);
   const sideColor = useMemo(() => new THREE.Color("#7c4b2d"), []);
   const outline = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.3), []);
   const outlineHover = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.5), []);
@@ -182,12 +250,20 @@ function TileMesh({
       {/* Dirt skirt */}
       <mesh position={[0, -0.14, 0]}>
         <primitive object={geoms.base} />
-        <meshStandardMaterial color={sideColor} roughness={1} metalness={0} />
+        <meshStandardMaterial color={sideColor} roughness={1} metalness={0} map={maps.dirt} roughnessMap={maps.dirtRough} />
       </mesh>
       {/* Grass top slab (slightly inset for bevel illusion) */}
       <mesh ref={ref} position={[0, 0.02, 0]}>
         <primitive object={geoms.top} />
-        <meshStandardMaterial color={hovered ? topColorHover : topColor} emissive={hovered ? topColorHover : undefined} emissiveIntensity={hovered ? 0.25 : 0} roughness={0.8} metalness={0} />
+        <meshStandardMaterial
+          color={hovered ? topColorHover : topColor}
+          emissive={hovered ? topColorHover : undefined}
+          emissiveIntensity={hovered ? 0.25 : 0}
+          roughness={0.8}
+          metalness={0}
+          map={maps.grass}
+          roughnessMap={maps.grassRough}
+        />
       </mesh>
       {/* outline */}
       <lineSegments position={[0, 0.04, 0]} raycast={() => null}>
@@ -208,7 +284,7 @@ const GREEN_B = new THREE.Color("#34d399");
 const GREEN_C = new THREE.Color("#22c55e");
 const GREEN_D = new THREE.Color("#16a34a");
 
-function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">; animated?: boolean }) {
+function TreeMesh({ type, animated = true, maps }: { type: Exclude<TreeType, "empty">; animated?: boolean; maps: { bark: THREE.Texture; leaves: THREE.Texture } }) {
   const group = useRef<THREE.Group>(null!);
   // Slight idle sway for foliage when animations enabled
   useFrame(({ clock }) => {
@@ -226,16 +302,16 @@ function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">;
           {/* canopy cluster */}
           <mesh position={[0, 0.25, 0]}>
             <sphereGeometry args={[0.25, 18, 18]} />
-            <meshStandardMaterial color={GREEN_A} emissive={GREEN_A_EM} emissiveIntensity={0.25} />
+            <meshStandardMaterial color={GREEN_A} emissive={GREEN_A_EM} emissiveIntensity={0.25} map={maps.leaves} />
           </mesh>
           <mesh position={[0.16, 0.22, 0]}>
             <sphereGeometry args={[0.16, 16, 16]} />
-            <meshStandardMaterial color={GREEN_B} />
+            <meshStandardMaterial color={GREEN_B} map={maps.leaves} />
           </mesh>
           {/* trunk */}
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.05, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.9} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.9} map={maps.bark} />
           </mesh>
         </group>
       );
@@ -244,19 +320,19 @@ function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">;
         <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
           <mesh position={[0, 0.42, 0]}>
             <sphereGeometry args={[0.34, 18, 18]} />
-            <meshStandardMaterial color={GREEN_C} emissive={GREEN_A_EM} emissiveIntensity={0.3} />
+            <meshStandardMaterial color={GREEN_C} emissive={GREEN_A_EM} emissiveIntensity={0.3} map={maps.leaves} />
           </mesh>
           <mesh position={[0.26, 0.3, 0]}>
             <sphereGeometry args={[0.22, 16, 16]} />
-            <meshStandardMaterial color={GREEN_B} />
+            <meshStandardMaterial color={GREEN_B} map={maps.leaves} />
           </mesh>
           <mesh position={[-0.22, 0.28, 0.05]}>
             <sphereGeometry args={[0.18, 16, 16]} />
-            <meshStandardMaterial color={GREEN_D} />
+            <meshStandardMaterial color={GREEN_D} map={maps.leaves} />
           </mesh>
           <mesh position={[0, 0.12, 0]}>
             <cylinderGeometry args={[0.07, 0.07, 0.34, 14]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} map={maps.bark} />
           </mesh>
         </group>
       );
@@ -266,15 +342,15 @@ function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">;
           {/* Layered cones + extra crown */}
           <mesh position={[0, 0.5, 0]}>
             <coneGeometry args={[0.36, 0.65, 14]} />
-            <meshStandardMaterial color={GREEN_C} />
+            <meshStandardMaterial color={GREEN_C} map={maps.leaves} />
           </mesh>
           <mesh position={[0, 0.25, 0]}>
             <coneGeometry args={[0.28, 0.5, 14]} />
-            <meshStandardMaterial color={new THREE.Color("#4ade80")} />
+            <meshStandardMaterial color={new THREE.Color("#4ade80")} map={maps.leaves} />
           </mesh>
           <mesh position={[0, 0.04, 0]}>
             <cylinderGeometry args={[0.06, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} map={maps.bark} />
           </mesh>
         </group>
       );
@@ -283,11 +359,11 @@ function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">;
         <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
           <mesh position={[0, 0.22, 0]}>
             <sphereGeometry args={[0.2, 12, 12]} />
-            <meshStandardMaterial color={GRAY_COLOR} />
+            <meshStandardMaterial color={GRAY_COLOR} map={maps.leaves} />
           </mesh>
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 0.2, 8]} />
-            <meshStandardMaterial color={new THREE.Color("#374151")} />
+            <meshStandardMaterial color={new THREE.Color("#374151")} map={maps.bark} />
           </mesh>
         </group>
       );
@@ -312,6 +388,8 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   }, [tiles, cols, rows]);
   // Reduced motion preference
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Page visibility to pause animations when hidden
+  const [pageVisible, setPageVisible] = useState(true);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -320,8 +398,17 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     try { m.addEventListener('change', apply); } catch { m.addListener(apply); }
     return () => { try { m.removeEventListener('change', apply); } catch { m.removeListener(apply); } };
   }, []);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => setPageVisible(!document.hidden);
+    onVis();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
   // Hover handling via global plane
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const moveRAF = useRef<number | null>(null);
+  const lastMoveXZ = useRef<{ x: number; z: number } | null>(null);
   // grid metrics (must match useGridPositions defaults: spacing=1, gap=0.1)
   const tile = 1;
   const gap = 0.1;
@@ -342,6 +429,29 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     edge: new THREE.BoxGeometry(0.94, 0.04, 0.94),
   }), []);
 
+  // Shared lightweight textures (cached) for materials
+  const textureMaps = useMemo(() => {
+    const grass = createNoiseTexture({ size: 128, scale: 10, contrast: 1.0, seed: 11 });
+    const grassRough = createNoiseTexture({ size: 128, scale: 6, contrast: 0.8, seed: 12 });
+    // Color maps should be in sRGB for correct brightness perception
+    // Roughness/metalness maps stay in linear space (default)
+    (grass as any).colorSpace = THREE.SRGBColorSpace;
+    grass.repeat.set(2, 2);
+    grassRough.repeat.set(2, 2);
+    const dirt = createNoiseTexture({ size: 128, scale: 7, contrast: 1.1, seed: 21 });
+    const dirtRough = createNoiseTexture({ size: 128, scale: 5, contrast: 1.0, seed: 22 });
+    (dirt as any).colorSpace = THREE.SRGBColorSpace;
+    dirt.repeat.set(2, 2);
+    dirtRough.repeat.set(2, 2);
+    const bark = createNoiseTexture({ size: 128, scale: 12, contrast: 1.25, seed: 31 });
+    (bark as any).colorSpace = THREE.SRGBColorSpace;
+    bark.repeat.set(1.5, 1.5);
+    const leaves = createNoiseTexture({ size: 128, scale: 14, contrast: 1.1, seed: 41 });
+    (leaves as any).colorSpace = THREE.SRGBColorSpace;
+    leaves.repeat.set(2, 2);
+    return { grass, grassRough, dirt, dirtRough, bark, leaves };
+  }, []);
+
   const handleTile = (i: number) => onTileClick?.(i);
 
   const ambientColor = useMemo(() => new THREE.Color(0xffffff), []);
@@ -359,13 +469,23 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     const { scene } = useThree();
 
     useEffect(() => {
-      if (!reducedMotion) cloudManager.attach(scene);
+      // Attach whenever the page is visible; do not block on reducedMotion to avoid clouds appearing static
+      if (pageVisible) cloudManager.attach(scene);
+      else cloudManager.stop();
       return () => cloudManager.stop();
-    }, [scene, reducedMotion]);
+    }, [scene, pageVisible]);
 
     useEffect(() => {
       cloudManager.setBounds({ left, right, minY, maxY, minZ, maxZ });
     }, [left, right, minY, maxY, minZ, maxZ]);
+
+    // Drive clouds from the R3F render loop
+    useFrame((_, delta) => {
+      if (!pageVisible) return;
+      cloudManager.frame(delta);
+      // If frameloop is 'demand', ensure a render happens
+      if (!reducedMotion) invalidate();
+    });
 
     return null;
   };
@@ -426,18 +546,40 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   const camPos: [number, number, number] =
     projection === "isometric" ? [k, k, k] : [k, k * Math.SQRT2, k];
 
+  // Sun sprite aligned with directional light direction
+  const Sun = () => {
+    const sunTex = useMemo(() => createSunTexture({ size: 128 }), []);
+    // Match the directional light direction ([3,6,3]) at a distance
+    const dir = new THREE.Vector3(3, 6, 3).normalize().multiplyScalar(20);
+    return (
+      <sprite position={[dir.x, dir.y, dir.z]} scale={[3.5, 3.5, 1]} raycast={() => null}>
+        <spriteMaterial
+          map={sunTex}
+          color={new THREE.Color('#ffd7a8')}
+          transparent
+          depthWrite={false}
+          depthTest
+          blending={THREE.AdditiveBlending}
+        />
+      </sprite>
+    );
+  };
+
   return (
     <div className={className} style={{ width: "100%", height }}>
       <Canvas
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true, depth: true }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: false, alpha: true, depth: true, powerPreference: 'high-performance' }}
         shadows={false}
-        frameloop="demand"
+        frameloop="always"
       >
         {/* Lights (warmer) */}
         <hemisphereLight color={0xfff1e0} groundColor={0x5b6b7a} intensity={0.6} />
         <ambientLight color={new THREE.Color('#fff4e6')} intensity={0.35} />
         <directionalLight position={[3, 6, 3]} intensity={0.7} color={new THREE.Color('#ffd7a8')} />
+
+        {/* Sun visual (outside Bounds so it doesn't affect fit) */}
+        <Sun />
 
         {/* Orthographic camera with isometric-like angle */}
         {/* Camera: 45–45 dimetric or classic isometric (equal-axes) */}
@@ -453,23 +595,25 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
             <group position={[0, -0.35, 0]}>
               <mesh raycast={() => null}>
                 <boxGeometry args={[width + 1.2, 0.6, depth + 1.2]} />
-                <meshStandardMaterial color={new THREE.Color("#6b4226")} roughness={1} />
+                <meshStandardMaterial color={new THREE.Color("#6b4226")} roughness={1} map={textureMaps.dirt} roughnessMap={textureMaps.dirtRough} />
               </mesh>
               <mesh position={[0, 0.31, 0]} raycast={() => null}>
                 <boxGeometry args={[width + 1.1, 0.06, depth + 1.1]} />
-                <meshStandardMaterial color={new THREE.Color("#84cc16")} roughness={0.9} />
+                <meshStandardMaterial color={new THREE.Color("#eaffb8")} roughness={0.9} map={textureMaps.grass} roughnessMap={textureMaps.grassRough} />
               </mesh>
             </group>
             {/* Decorative perimeter */}
             {!reducedMotion && <Fence />}
+            {/* Rocks, grass, farms and houses to make the garden feel real */}
+            {/* {!reducedMotion && <PerimeterDecorations width={width} depth={depth} reducedMotion={reducedMotion} />} */}
             {/* Tiles */}
             {positions.map((pos, i) => {
               const t = normalized[i];
               return (
                 <group key={i} position={pos}>
-                  <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} />
+                  <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} maps={{ grass: textureMaps.grass, grassRough: textureMaps.grassRough, dirt: textureMaps.dirt, dirtRough: textureMaps.dirtRough }} />
                   {/* Tree */}
-                  {isTree(t) ? <TreeMesh type={t} animated={!reducedMotion} /> : null}
+                  {isTree(t) ? <TreeMesh type={t} animated={!reducedMotion && pageVisible} maps={{ bark: textureMaps.bark, leaves: textureMaps.leaves }} /> : null}
                 </group>
               );
             })}
@@ -477,13 +621,30 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
             <mesh
               position={[0, 0.06, 0]}
               rotation={[-Math.PI / 2, 0, 0]}
-              onPointerMove={(e) => {
-                const p = e.point; // world coords intersecting this plane
+              onPointerOver={(e) => {
+                const p = e.point;
                 const idx = indexFromXZ(p.x, p.z);
                 if (idx !== hoveredIndex) {
                   setHoveredIndex(idx);
                   if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
                   invalidate();
+                }
+              }}
+              onPointerMove={(e) => {
+                const p = e.point;
+                lastMoveXZ.current = { x: p.x, z: p.z };
+                if (moveRAF.current == null) {
+                  moveRAF.current = window.requestAnimationFrame(() => {
+                    moveRAF.current = null;
+                    const last = lastMoveXZ.current;
+                    if (!last) return;
+                    const idx = indexFromXZ(last.x, last.z);
+                    if (idx !== hoveredIndex) {
+                      setHoveredIndex(idx);
+                      if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
+                      invalidate();
+                    }
+                  });
                 }
               }}
               onClick={(e) => {
@@ -498,6 +659,8 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                   if (typeof document !== 'undefined') document.body.style.cursor = 'default';
                   invalidate();
                 }
+                if (moveRAF.current) { window.cancelAnimationFrame(moveRAF.current); moveRAF.current = null; }
+                lastMoveXZ.current = null;
               }}
             >
               <planeGeometry args={[width + 0.2, depth + 0.2]} />

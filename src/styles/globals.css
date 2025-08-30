@@ -37,6 +37,24 @@ html, body {
   @apply bg-[rgb(var(--color-bg))] text-[rgb(var(--color-foreground))] antialiased;
 }
 
+/* Light theme overrides */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="light"] {
+  /* Softer light neutrals */
+  --color-bg: 245 246 248;      /* very light gray */
+  --color-card: 255 255 255;    /* white */
+  --color-muted: 102 112 133;   /* slate-ish */
+  --color-foreground: 28 30 33; /* near-black text */
+
+  /* Keep brand colors; slightly adjust shadows for light */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.12);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.16);
+}
+
 .card {
   @apply rounded-[var(--radius-md)] bg-[rgb(var(--color-card))] shadow-[var(--shadow-sm)];
 }
