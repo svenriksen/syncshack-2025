@@ -222,6 +222,7 @@ function TileMesh({
   checker,
   geoms,
   maps,
+  isDark,
 }: {
   i: number;
   position: [number, number, number];
@@ -229,6 +230,7 @@ function TileMesh({
   checker: boolean;
   geoms: { base: THREE.BoxGeometry; top: THREE.BoxGeometry; edge: THREE.BoxGeometry };
   maps: { grass: THREE.Texture; grassRough?: THREE.Texture; dirt: THREE.Texture; dirtRough?: THREE.Texture };
+  isDark: boolean;
 }) {
   const ref = useRef<THREE.Mesh>(null!);
   // Stylized grass tile colors (lightened more), memoized to avoid recreating per render
@@ -237,8 +239,9 @@ function TileMesh({
   // Darker hover tint for stronger contrast
   const topColorHover = useMemo(() => new THREE.Color("#5fbf5a"), []);
   const sideColor = useMemo(() => new THREE.Color("#7c4b2d"), []);
-  const outline = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.3), []);
-  const outlineHover = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.5), []);
+  // Theme-aware outlines: darker lines for light theme, lighter for dark theme
+  const outline = useMemo(() => (isDark ? new THREE.Color(1, 1, 1).multiplyScalar(0.3) : new THREE.Color('#1f2937')), [isDark]);
+  const outlineHover = useMemo(() => (isDark ? new THREE.Color(1, 1, 1).multiplyScalar(0.5) : new THREE.Color('#111827')), [isDark]);
 
   // Apply scale to the top slab when hovered changes
   useEffect(() => {
@@ -391,6 +394,8 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   const [reducedMotion, setReducedMotion] = useState(false);
   // Page visibility to pause animations when hidden
   const [pageVisible, setPageVisible] = useState(true);
+  // Theme detection (prefers-color-scheme and html.dark class)
+  const [isDark, setIsDark] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -398,6 +403,22 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     apply();
     try { m.addEventListener('change', apply); } catch { m.addListener(apply); }
     return () => { try { m.removeEventListener('change', apply); } catch { m.removeListener(apply); } };
+  }, []);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const compute = () => {
+      const el = document.documentElement;
+      const attr = el.getAttribute('data-theme');
+      const byAttr = attr === 'dark' ? true : attr === 'light' ? false : null;
+      const byClass = el.classList.contains('dark');
+      setIsDark(byAttr ?? byClass ?? media.matches);
+    };
+    compute();
+    try { media.addEventListener('change', compute); } catch { media.addListener(compute); }
+    const mo = new MutationObserver(compute);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    return () => { try { media.removeEventListener('change', compute); } catch { media.removeListener(compute); } mo.disconnect(); };
   }, []);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -513,7 +534,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     const left = -width / 2 - 2.0;
     const right = width / 2 + 2.0;
     const minY = 2.2, maxY = 4.5;
-    const minZ = -0.2, maxZ = 0.25;
+    const minZ = -0.6, maxZ = 0.6;
     const { scene } = useThree();
 
     useEffect(() => {
@@ -621,10 +642,10 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
         shadows={false}
         frameloop="always"
       >
-        {/* Lights (cooler daylight to avoid yellow/brown tint on grass) */}
-        <hemisphereLight color={0xe8fff6} groundColor={0x6b7a73} intensity={0.75} />
-        <ambientLight color={new THREE.Color('#ffffff')} intensity={0.45} />
-        <directionalLight position={[3, 6, 3]} intensity={0.85} color={new THREE.Color('#ffffff')} />
+        {/* Theme-aware lights */}
+        <hemisphereLight color={isDark ? 0xe8fff6 : 0xf3fff9} groundColor={isDark ? 0x6b7a73 : 0x9aa7a1} intensity={isDark ? 0.75 : 0.6} />
+        <ambientLight color={new THREE.Color('#ffffff')} intensity={isDark ? 0.45 : 0.35} />
+        <directionalLight position={[3, 6, 3]} intensity={isDark ? 0.85 : 0.75} color={new THREE.Color('#ffffff')} />
 
         {/* Sun visual (outside Bounds so it doesn't affect fit) */}
         <Sun />
@@ -659,7 +680,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
               const t = normalized[i];
               return (
                 <group key={i} position={pos}>
-                  <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} maps={{ grass: textureMaps.grass, grassRough: textureMaps.grassRough, dirt: textureMaps.dirt, dirtRough: textureMaps.dirtRough }} />
+                  <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} maps={{ grass: textureMaps.grass, grassRough: textureMaps.grassRough, dirt: textureMaps.dirt, dirtRough: textureMaps.dirtRough }} isDark={isDark} />
                   {/* Tree */}
                   {isTree(t) ? <TreeMesh type={t} animated={!reducedMotion && pageVisible} maps={{ bark: textureMaps.bark, leaves: textureMaps.leaves }} /> : null}
                 </group>

@@ -16,10 +16,10 @@ export function Button({
     "inline-flex items-center justify-center rounded-[var(--radius-sm)] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
     primary:
-      "bg-[rgb(var(--color-primary))] text-black hover:bg-[rgb(var(--color-primary-600))] hover:text-white",
+      "bg-[rgb(var(--color-primary))] text-black hover:bg-[rgb(var(--color-primary-600))] hover:text-black",
     secondary:
-      "bg-[rgb(var(--color-card))] text-white/90 hover:text-white border border-white/10",
-    ghost: "bg-transparent text-white/80 hover:text-white hover:bg-white/5",
+      "bg-[rgb(var(--color-card))] text-[rgb(var(--color-foreground))/0.9] hover:text-[rgb(var(--color-foreground))] border border-[rgb(var(--color-foreground))/0.12]",
+    ghost: "bg-transparent text-[rgb(var(--color-foreground))/0.85] hover:text-[rgb(var(--color-foreground))] hover:bg-[rgb(var(--color-foreground))/0.06]",
   } as const;
   const sizes = {
     sm: "h-8 px-3 text-sm",

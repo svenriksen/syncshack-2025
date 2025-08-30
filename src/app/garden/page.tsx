@@ -219,8 +219,8 @@ export default function GardenPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card p-4 md:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white/80">Your Plot ({rows}×{cols})</h2>
-            <div className="text-xs text-white/60">Planted: {plantedCount}/{rows * cols}</div>
+            <h2 className="text-sm font-semibold text-[rgb(var(--color-foreground))/0.85]">Your Plot ({rows}×{cols})</h2>
+            <div className="text-xs text-[rgb(var(--color-foreground))/0.6]">Planted: {plantedCount}/{rows * cols}</div>
           </div>
           <div className="h-[240px] md:h-[70vh]">
             {mounted && (
@@ -237,7 +237,7 @@ export default function GardenPage() {
         </div>
         <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-white/80">Shop</h2>
+              <h2 className="text-sm font-semibold text-[rgb(var(--color-foreground))/0.85]">Shop</h2>
               <div className="flex items-center gap-2">
                 {isLocalhost && (
                   <Button
@@ -282,10 +282,10 @@ export default function GardenPage() {
                 Withered
               </Button>
             </div>
-            <div className="rounded-[var(--radius-sm)] bg-white/5 p-3 text-sm text-white/70">
+            <div className="rounded-[var(--radius-sm)] bg-[rgb(var(--color-foreground))/0.06] p-3 text-sm text-[rgb(var(--color-foreground))/0.7]">
               Click a tile to plant the selected tree. Click again to remove.
             </div>
-            <div className="text-xs text-white/50">If you miss a day, your newest tree withers.</div>
+            <div className="text-xs text-[rgb(var(--color-foreground))/0.5]">If you miss a day, your newest tree withers.</div>
           </div>
         </div>
       </div>
