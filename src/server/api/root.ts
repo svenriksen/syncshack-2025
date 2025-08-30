@@ -2,6 +2,7 @@ import { homeRouter } from "@/server/api/routers/home";
 import { coinRouter } from "@/server/api/routers/coin";
 import { streakRouter } from "@/server/api/routers/streak";
 import { profileRouter } from "@/server/api/routers/profile";
+import { leaderboardRouter } from "@/server/api/routers/leaderboard";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import {osmRouter} from "@/server/api/routers/osm";
 
@@ -15,6 +16,7 @@ export const appRouter = createTRPCRouter({
   coin: coinRouter,
   streak: streakRouter,
   profile: profileRouter,
+  leaderboard: leaderboardRouter,
   osm: osmRouter
 });
 

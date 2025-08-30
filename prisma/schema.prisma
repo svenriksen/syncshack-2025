@@ -16,6 +16,7 @@ enum TreeType {
   maple
   bonsai
   sakura
+  withered
 }
 
 // Necessary for Next auth
