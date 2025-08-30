@@ -48,6 +48,17 @@ export default async function Home() {
   const streak = 0;
   const multiplier = 0;
   const { coins } = await api.coin.getBalance();
+  
+  // Fetch leaderboard data
+  const leaderboardData = await api.leaderboard.getWeeklyLeaderboard();
+  const userRank = await api.leaderboard.getUserRank();
+  
+  // Get top 5 players
+  const topPlayers = leaderboardData.leaderboard.slice(0, 5);
+  
+  // Get today's trips
+  const todayTrips = await api.trip.getTodayTrips();
+
   return (
     <div className="flex min-h-[85svh] flex-col gap-6">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -67,8 +78,15 @@ export default async function Home() {
         </div>
         <div className="card p-5">
           <div className="text-sm text-[rgb(var(--color-foreground))/0.6]">Today</div>
-          <div className="mt-1 text-3xl font-semibold">No trips yet</div>
-          <div className="mt-2 text-sm text-[rgb(var(--color-foreground))/0.6]">Keep this tab open for best accuracy.</div>
+          <div className="mt-1 text-3xl font-semibold">
+            {todayTrips.length > 0 ? `${todayTrips.length} trip${todayTrips.length === 1 ? '' : 's'}` : 'No trips yet'}
+          </div>
+          <div className="mt-2 text-sm text-[rgb(var(--color-foreground))/0.6]">
+            {todayTrips.length > 0 
+              ? `${todayTrips.filter(t => t.valid).length} valid trip${todayTrips.filter(t => t.valid).length === 1 ? '' : 's'}`
+              : 'Keep this tab open for best accuracy.'
+            }
+          </div>
         </div>
       </section>
 
@@ -86,14 +104,55 @@ export default async function Home() {
             <h2 className="text-lg font-semibold">Weekly Leaderboard</h2>
             <Link href="/leaderboard" className="text-sm text-[rgb(var(--color-primary))] hover:underline">View all</Link>
           </div>
-          <ul className="space-y-2 text-sm text-[rgb(var(--color-foreground))/0.85]">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="flex items-center justify-between rounded-md bg-[rgb(var(--color-foreground))/0.06] px-3 py-2">
-                <span>Player {i + 1}</span>
-                <span className="font-medium">0</span>
-              </li>
-            ))}
-          </ul>
+          
+          {topPlayers.length === 0 ? (
+            <div className="text-center py-8 text-[rgb(var(--color-foreground))/0.6]">
+              <p>No players yet this week</p>
+              <p className="text-sm mt-1">Complete trips to earn coins!</p>
+            </div>
+          ) : (
+            <>
+              <ul className="space-y-2 text-sm text-[rgb(var(--color-foreground))/0.85]">
+                {topPlayers.map((player) => (
+                  <li key={player.userId} className="flex items-center justify-between rounded-md bg-[rgb(var(--color-foreground))/0.06] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-yellow-500">
+                        {player.rank === 1 ? "🥇" : player.rank === 2 ? "🥈" : player.rank === 3 ? "🥉" : `#${player.rank}`}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {player.userImage && (
+                          <img 
+                            src={player.userImage} 
+                            alt={player.userName}
+                            className="w-4 h-4 rounded-full"
+                          />
+                        )}
+                        <span className={player.rank <= 3 ? 'font-semibold' : ''}>
+                          {player.userName}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="font-medium">{player.coins} coins</span>
+                  </li>
+                ))}
+              </ul>
+              
+              {userRank && userRank.rank && (
+                <div className="mt-4 pt-3 border-t border-[rgb(var(--color-foreground))/0.1]">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[rgb(var(--color-primary))]">#{userRank.rank}</span>
+                      <span className="text-[rgb(var(--color-primary))]">Your Rank</span>
+                    </div>
+                    <span className="font-medium text-[rgb(var(--color-primary))]">{userRank.coins} coins</span>
+                  </div>
+                  <div className="text-xs text-[rgb(var(--color-foreground))/0.6] mt-1">
+                    {userRank.totalPlayers} total players this week
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
     </div>

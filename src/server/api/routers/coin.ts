@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { TreeType } from "@prisma/client";
 
 import {
   createTRPCRouter,
@@ -7,15 +8,17 @@ import {
 } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { isHouse } from "@/lib/garden";
+import { updateWeeklyLeaderboard } from "@/lib/leaderboard";
 
 // Tree prices from the garden shop (Japanese-themed)
-const TREE_PRICES = {
+const TREE_PRICES: Record<TreeType, number> = {
   pine: 150,
   bamboo: 200,
   maple: 300,
   bonsai: 500,
   sakura: 650,
-} as const;
+  withered: 0, // Withered trees have no value
+};
 
 export const coinRouter = createTRPCRouter({
   // Get user's coin balance
@@ -179,7 +182,7 @@ export const coinRouter = createTRPCRouter({
       }
 
       // Calculate refund (50% of original price)
-      const originalPrice = TREE_PRICES[existingTree.type as keyof typeof TREE_PRICES] ?? 0;
+      const originalPrice = TREE_PRICES[existingTree.type] ?? 0;
       const refund = Math.floor(originalPrice * 0.5);
 
       // Use transaction to ensure atomicity
@@ -242,6 +245,9 @@ export const coinRouter = createTRPCRouter({
         },
       });
 
+      // Update weekly leaderboard
+      await updateWeeklyLeaderboard(userId, amount);
+
       return {
         success: true,
         newBalance: profile.totalCoins,
@@ -263,6 +269,9 @@ export const coinRouter = createTRPCRouter({
           totalCoins: 1000, // Reset to 1000 for testing
         },
       });
+
+      // Update weekly leaderboard with starting coins
+      await updateWeeklyLeaderboard(userId, 1000);
 
       return {
         success: true,
