@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { TRPCReactProvider } from "@/trpc/react";
+import { ChatWidget } from "./_components/chat-widget";
 import { SessionProvider } from "next-auth/react";
 import { Navigation } from "./_components/navigation";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
               </div>
             </header>
             <main className="container-slim py-6">{children}</main>
+            <ChatWidget />
             <Toaster />
           </TRPCReactProvider>
         </SessionProvider>

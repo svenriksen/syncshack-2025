@@ -4,6 +4,7 @@ import { streakRouter } from "@/server/api/routers/streak";
 import { profileRouter } from "@/server/api/routers/profile";
 import { leaderboardRouter } from "@/server/api/routers/leaderboard";
 import { tripRouter } from "@/server/api/routers/trip";
+import { chatRouter } from "@/server/api/routers/chat";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import {osmRouter} from "@/server/api/routers/osm";
 
@@ -20,6 +21,7 @@ export const appRouter = createTRPCRouter({
   leaderboard: leaderboardRouter,
   trip: tripRouter,
   osm: osmRouter
+  ,chat: chatRouter
 });
 
 // export type definition of API
