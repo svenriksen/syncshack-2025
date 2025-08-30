@@ -2,7 +2,7 @@ import "@/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
-import Link from "next/link";
+import { Toaster } from "sonner";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import { SessionProvider } from "next-auth/react";
@@ -40,6 +40,7 @@ export default function RootLayout({
               </div>
             </header>
             <main className="container-slim py-6">{children}</main>
+            <Toaster />
           </TRPCReactProvider>
         </SessionProvider>
       </body>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "./_components/button";
 import { GardenPreview } from "./_components/garden-preview";
+import { api } from "@/trpc/server";
 
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
