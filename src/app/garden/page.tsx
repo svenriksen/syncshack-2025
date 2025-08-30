@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../_components/button";
-import { GardenIso3D } from "../_components/garden-iso-3d";
+import dynamic from "next/dynamic";
+const GardenIso3D = dynamic(() => import("../_components/garden-iso-3d").then((m) => m.GardenIso3D), { ssr: false });
+import { DEFAULT_COLS, DEFAULT_ROWS } from "../_components/garden-config";
 
 type TreeType = "empty" | "sapling" | "young" | "mature" | "withered";
 
 export default function GardenPage() {
-  const cols = 10;
-  const rows = 8;
+  const cols = DEFAULT_COLS;
+  const rows = DEFAULT_ROWS;
   const [tiles, setTiles] = useState<TreeType[]>(() => new Array<TreeType>(rows * cols).fill("empty"));
   const [selected, setSelected] = useState<Exclude<TreeType, "empty">>("sapling");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const handleTileClick = (idx: number) => {
     setTiles((prev) => {
@@ -33,16 +38,21 @@ export default function GardenPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card p-4 md:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white/80">Your Plot (8×10)</h2>
-            <div className="text-xs text-white/60">Planted: {plantedCount}/80</div>
+            <h2 className="text-sm font-semibold text-white/80">Your Plot ({rows}×{cols})</h2>
+            <div className="text-xs text-white/60">Planted: {plantedCount}/{rows * cols}</div>
           </div>
-          <GardenIso3D
-            className="relative overflow-hidden rounded-[var(--radius-lg)]"
-            cols={cols}
-            rows={rows}
-            tiles={tiles}
-            onTileClick={handleTileClick}
-          />
+          <div className="h-[240px] md:h-[70vh]">
+            {mounted && (
+              <GardenIso3D
+                className="relative overflow-hidden rounded-[var(--radius-lg)]"
+                cols={cols}
+                rows={rows}
+                tiles={tiles}
+                onTileClick={handleTileClick}
+                height="100%"
+              />
+            )}
+          </div>
         </div>
         <div className="card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-white/80">Shop</h2>

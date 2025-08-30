@@ -42,7 +42,8 @@ html, body {
 }
 
 .container-slim {
-  @apply mx-auto w-full max-w-5xl px-4 md:px-6;
+  /* Centered container: full width on mobile, 80% width on desktop */
+  @apply mx-auto w-full max-w-5xl px-4 md:px-6 md:max-w-none md:w-[80%];
 }
 
 .grid-tiles {

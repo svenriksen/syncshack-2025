@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "./_components/button";
 import { GardenPreview } from "./_components/garden-preview";
+import { DEFAULT_COLS, DEFAULT_ROWS } from "./_components/garden-config";
 
 export default async function Home() {
   // TODO: fetch actual data via TRPC once backend exists
@@ -9,7 +10,7 @@ export default async function Home() {
   const multiplier = 0;
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-[85svh] flex-col gap-6">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card p-5">
           <div className="text-sm text-white/60">Coins</div>
@@ -32,16 +33,16 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="card p-5">
+      <section className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="card h-full p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Garden</h2>
             <Link href="/garden" className="text-sm text-[rgb(var(--color-primary))] hover:underline">Manage</Link>
           </div>
-          <GardenPreview />
+          <GardenPreview cols={DEFAULT_COLS} rows={DEFAULT_ROWS} />
         </div>
 
-        <div className="card p-5">
+        <div className="card h-full p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Weekly Leaderboard</h2>
             <Link href="/leaderboard" className="text-sm text-[rgb(var(--color-primary))] hover:underline">View all</Link>
