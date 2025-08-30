@@ -2,7 +2,7 @@
 
 ## 1. Problem & Goal
 - **Problem**: Students want to lower daily carbon footprint but lack consistent motivation.
-- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**; keep cheating hard enough to be annoying.
+- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**.
 
 ---
 
@@ -41,6 +41,7 @@
     - Avg speed ≤ 15 km/h; no point > 30 km/h
     - No “teleports” (Δ>200 m in 2s)
     - Start & end within geofence
+- **GPS updated by request**: Click on the button "Where am I" every 5 minutes (to avoid rate limit) - also make it as a challenge to user
 - **Coins formula**: `coins = min(300, round(5 + 20 * distance_km))`.
 - **Mode guess**: walk/bike/unknown (based on avg speed).
 
@@ -144,16 +145,7 @@ model Garden {
   status    String   @default("alive")
   plantedAt DateTime @default(now())
 }
+```
 
-model LeaderboardWeek {
-  id            String   @id @default(cuid())
-  weekStartDate DateTime
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  coins         Int      @default(0)
-
-  @@unique([weekStartDate, userId])
-  @@index([weekStartDate, coins])
-}
 
 
