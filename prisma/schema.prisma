@@ -14,18 +14,6 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
 // Necessary for Next auth
 model Account {
     id                       String  @id @default(cuid())
@@ -56,13 +44,19 @@ model Session {
 
 model User {
     id            String    @id @default(cuid())
+    email         String    @unique
     name          String?
-    email         String?   @unique
-    emailVerified DateTime?
     image         String?
+    emailVerified DateTime?
+
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+
+    // MVP relations
+    profile       Profile?
+    trips         Trip[]
+    gardens       Garden[]
+    weeklyEntries LeaderboardWeek[]
 }
 
 model VerificationToken {
@@ -71,4 +65,78 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+// =====================
+// MVP Models
+// =====================
+
+model Profile {
+  userId              String  @id
+  user                User    @relation(fields: [userId], references: [id])
+  totalCoins          Int     @default(0)
+  currentStreak       Int     @default(0)
+  longestStreak       Int     @default(0)
+  treesPlantedVirtual Int     @default(0)
+  treesPlantedReal    Int     @default(0)
+  lastActiveDate      DateTime?
+}
+
+model Trip {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  startLat     Float
+  startLng     Float
+  endLat       Float
+  endLng       Float
+  distanceM    Int      @default(0)
+  durationS    Int      @default(0)
+  modeGuess    String   @default("unknown")
+  valid        Boolean  @default(false)
+  coinsAwarded Int      @default(0)
+  startedAt    DateTime
+  endedAt      DateTime?
+  polyline     String   // JSON of {lat,lng,t,s}
+  createdAt    DateTime @default(now())
+  flags        AuditFlag[]
+
+  @@index([userId, startedAt])
+}
+
+model AuditFlag {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([tripId, createdAt])
+}
+
+enum TreeType { sapling, young, mature, withered }
+
+model Garden {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      TreeType
+  x         Int
+  y         Int
+  status    String   @default("alive")
+  plantedAt DateTime @default(now())
+
+  @@unique([userId, x, y])
+  @@index([userId])
+}
+
+model LeaderboardWeek {
+  id            String   @id @default(cuid())
+  weekStartDate DateTime
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  coins         Int      @default(0)
+
+  @@unique([weekStartDate, userId])
+  @@index([weekStartDate, coins])
 }

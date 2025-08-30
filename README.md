@@ -1,29 +1,159 @@
-# Create T3 App
+# 🌱 GreenStride – MVP Spec
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+## 1. Problem & Goal
+- **Problem**: Students want to lower daily carbon footprint but lack consistent motivation.
+- **Goal**: Reward verified walking/biking trips with coins that grow a **virtual garden**; maintain a daily **streak**; show **CO₂ saved**; keep cheating hard enough to be annoying.
 
-## What's next? How do I make an app with this?
+---
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## 2. Primary User Stories (MVP)
+1. User can **sign in** (Google/email) → see coin balance, streak, and **Start Trip** CTA.
+2. User can **choose a destination** and **start a trip**.
+3. During trip → **HUD** (time, distance, speed, polyline map).
+4. At finish → trip validated; if valid → **coins awarded** + **CO₂ saved** shown.
+5. User can **spend coins** to plant **virtual trees** in a garden grid.
+6. If user misses a day → newest tree **withers**, streak resets.
+7. **(Optional)** User can view a **weekly leaderboard**.
+8. User can view **impact totals** (distance, CO₂ saved).
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+---
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+## 3. Non-Goals (MVP)
+- No payments.
+- No real tree purchases.
+- No background tracking (tab must stay open).
+- No mobile-native apps.
 
-## Learn More
+---
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## 4. Functional Requirements
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### A. Auth
+- **NextAuth** with Google OAuth or magic-link email.
+- First login → creates `User` + `Profile`.
+- Redirect unauthenticated users → `/auth`.
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+### B. Trip Tracking & Validation
+- **Start trip**: pick destination, start geofence radius 120–150m.
+- **Validation rules**:
+    - Distance ≥ 500 m
+    - Duration ≥ 8 minutes
+    - Avg speed ≤ 15 km/h; no point > 30 km/h
+    - No “teleports” (Δ>200 m in 2s)
+    - Start & end within geofence
+- **Coins formula**: `coins = min(300, round(5 + 20 * distance_km))`.
+- **Mode guess**: walk/bike/unknown (based on avg speed).
 
-## How do I deploy this?
+### C. Garden
+- **Grid**: 8×10 tiles.
+- **Shop**: sapling (100), young (250), mature (600) coins.  (MIGHT ADD MORE)
+- **Wither**: oldest tree withers if no valid trip that day.
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+### D. Streak
+- +1 per day with ≥1 valid trip.
+- +10% coin multiplier/day, capped at +50%.
+- Reset if day missed; newest tree withers.
+
+### E. Leaderboard (OPTIONAL)
+- Weekly (Mon–Sun AEST).
+- Show top 10 + my rank.
+
+### F. Impact
+- **CO₂ saved** = `distance_km × 120 g`.
+- Show weekly & all-time.
+
+### G. Progressive Web App & UX
+- Installable PWA (manifest + SW).
+- Toast: “Keep this tab open for best accuracy.”
+- Skeleton loading, error toasts, empty states.
+
+---
+
+## 5. Non-Functional Requirements
+- **Performance**: HUD updates ≤ 1s after GPS sample.
+- **Reliability**: server validates deterministically.
+- **Security**: protected routes, Zod validation.
+- **Privacy**: only aggregates shown; user can delete trips.
+- **Timezone**: all streaks/leaderboards use `Australia/Sydney`.
+
+---
+
+## 6. Data Model (Prisma)
+
+```prisma
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  image         String?
+  createdAt     DateTime @default(now())
+  profile       Profile?
+  trips         Trip[]
+  gardens       Garden[]
+  weeklyEntries LeaderboardWeek[]
+}
+
+model Profile {
+  userId              String  @id
+  user                User    @relation(fields: [userId], references: [id])
+  totalCoins          Int     @default(0)
+  currentStreak       Int     @default(0)
+  longestStreak       Int     @default(0)
+  treesPlantedVirtual Int     @default(0)
+  treesPlantedReal    Int     @default(0)
+  lastActiveDate      DateTime?
+}
+
+model Trip {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  startLat     Float
+  startLng     Float
+  endLat       Float
+  endLng       Float
+  distanceM    Int      @default(0)
+  durationS    Int      @default(0)
+  modeGuess    String   @default("unknown")
+  valid        Boolean  @default(false)
+  coinsAwarded Int      @default(0)
+  startedAt    DateTime
+  endedAt      DateTime?
+  polyline     String   // JSON of {lat,lng,t,s}
+  createdAt    DateTime @default(now())
+  flags        AuditFlag[]
+}
+
+model AuditFlag {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+enum TreeType { sapling, young, mature, withered }
+
+model Garden {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      TreeType
+  x         Int
+  y         Int
+  status    String   @default("alive")
+  plantedAt DateTime @default(now())
+}
+
+model LeaderboardWeek {
+  id            String   @id @default(cuid())
+  weekStartDate DateTime
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  coins         Int      @default(0)
+
+  @@unique([weekStartDate, userId])
+  @@index([weekStartDate, coins])
+}
+
+

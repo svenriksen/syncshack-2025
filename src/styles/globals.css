@@ -3,4 +3,55 @@
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Brand palette: Urban Garden */
+  --color-bg: 14 14 16; /* near-black */
+  --color-card: 22 22 26; /* dark slate */
+  --color-muted: 120 120 128; /* gray */
+  --color-foreground: 242 243 245; /* off-white */
+
+  --color-primary: 16 185 129; /* emerald 500 */
+  --color-primary-600: 5 150 105; /* emerald 600 */
+  --color-primary-700: 4 120 87; /* emerald 700 */
+
+  --color-accent: 34 197 94; /* green 500 */
+  --color-accent-600: 22 163 74; /* green 600 */
+  --color-warning: 245 158 11; /* amber 500 */
+  --color-danger: 239 68 68; /* red 500 */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.35);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.35);
+}
+
+/* Base styles */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  @apply bg-[rgb(var(--color-bg))] text-[rgb(var(--color-foreground))] antialiased;
+}
+
+.card {
+  @apply rounded-[var(--radius-md)] bg-[rgb(var(--color-card))] shadow-[var(--shadow-sm)];
+}
+
+.container-slim {
+  @apply mx-auto w-full max-w-5xl px-4 md:px-6;
+}
+
+.grid-tiles {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  aspect-ratio: 1/1;
+  @apply rounded-[var(--radius-sm)] bg-[rgb(var(--color-card))] outline outline-1 outline-[rgba(255,255,255,0.06)];
 }
