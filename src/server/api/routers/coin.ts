@@ -57,7 +57,8 @@ export const coinRouter = createTRPCRouter({
       z.object({
         x: z.number().min(0).max(9),
         y: z.number().min(0).max(9),
-        type: z.enum(["sapling", "young", "mature", "withered"]),
+        // Withered trees are no longer plantable via API
+        type: z.enum(["sapling", "young", "mature"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -72,8 +73,8 @@ export const coinRouter = createTRPCRouter({
       const currentCoins = profile?.totalCoins ?? 0;
       const treePrice = TREE_PRICES[type];
 
-      // Check if user has enough coins (except for withered trees)
-      if (type !== "withered" && currentCoins < treePrice) {
+      // Check if user has enough coins
+      if (currentCoins < treePrice) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Not enough coins. You need ${treePrice} coins but have ${currentCoins}.`,
@@ -100,23 +101,21 @@ export const coinRouter = createTRPCRouter({
 
       // Use transaction to ensure atomicity
       const result = await db.$transaction(async (tx) => {
-        // Deduct coins (except for withered trees)
-        if (type !== "withered") {
-          await tx.profile.upsert({
-            where: { userId },
-            create: {
-              userId,
-              totalCoins: currentCoins - treePrice,
-              treesPlantedVirtual: 1,
+        // Deduct coins
+        await tx.profile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            totalCoins: currentCoins - treePrice,
+            treesPlantedVirtual: 1,
+          },
+          update: {
+            totalCoins: currentCoins - treePrice,
+            treesPlantedVirtual: {
+              increment: 1,
             },
-            update: {
-              totalCoins: currentCoins - treePrice,
-              treesPlantedVirtual: {
-                increment: 1,
-              },
-            },
-          });
-        }
+          },
+        });
 
         // Plant the tree
         const garden = await tx.garden.create({
@@ -135,7 +134,7 @@ export const coinRouter = createTRPCRouter({
       return {
         success: true,
         tree: result,
-        newBalance: type !== "withered" ? currentCoins - treePrice : currentCoins,
+        newBalance: currentCoins - treePrice,
       };
     }),
 

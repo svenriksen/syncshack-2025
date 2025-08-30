@@ -16,7 +16,7 @@ interface MapBoxProps {
 export function MapBox({ onRouteUpdate }: MapBoxProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const directions = useRef<MapboxDirections | null>(null);
+  const directions = useRef<any | null>(null);
   const [lng, setLng] = useState(-70.9);
   const [lat, setLat] = useState(42.35);
   const [zoom, setZoom] = useState(9);
@@ -267,17 +267,30 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
             },
           });
         }
+        // Soft glow under current location for visibility on dark style
+        if (!initializedMap.getLayer("current-location-glow")) {
+          initializedMap.addLayer({
+            id: "current-location-glow",
+            type: "circle",
+            source: "current-location",
+            paint: {
+              "circle-radius": 16,
+              "circle-color": "#22D3EE",
+              "circle-opacity": 0.22,
+            },
+          });
+        }
         if (!initializedMap.getLayer("current-location-dot")) {
           initializedMap.addLayer({
             id: "current-location-dot",
             type: "circle",
             source: "current-location",
             paint: {
-              "circle-radius": 6,
+              "circle-radius": 8,
               "circle-color": "#00E5FF",
               "circle-stroke-color": "#FFFFFF",
-              "circle-stroke-width": 2,
-              "circle-opacity": 0.95,
+              "circle-stroke-width": 3,
+              "circle-opacity": 0.98,
             },
           });
         }
@@ -314,6 +327,22 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
             data: { type: "FeatureCollection", features: [] },
           });
         }
+        // Glow beneath bearing arrow for better contrast
+        if (!initializedMap.getLayer("bearing-arrow-glow")) {
+          initializedMap.addLayer({
+            id: "bearing-arrow-glow",
+            type: "circle",
+            source: "bearing-arrow",
+            paint: {
+              "circle-radius": 18,
+              "circle-color": "#22D3EE",
+              "circle-opacity": 0.18,
+            },
+            layout: {
+              visibility: destCoords ? "visible" : "none",
+            },
+          });
+        }
         if (!initializedMap.getLayer("bearing-arrow-layer")) {
           initializedMap.addLayer({
             id: "bearing-arrow-layer",
@@ -321,7 +350,7 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
             source: "bearing-arrow",
             layout: {
               "icon-image": "bearing-arrow",
-              "icon-size": 0.5,
+              "icon-size": 0.7,
               "icon-allow-overlap": true,
               "icon-ignore-placement": true,
               "icon-rotate": ["get", "bearing"],
@@ -743,10 +772,10 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
           {/* Floating recenter button */}
           <button
             onClick={getCurrentLocation}
-            className={`absolute right-3 ${fullscreen ? 'bottom-24' : 'bottom-3'} z-10 p-3 rounded-full bg-black/60 backdrop-blur text-white shadow-lg active:scale-95`}
+            className={`absolute right-3 ${fullscreen ? 'bottom-24' : 'bottom-3'} z-10 p-3.5 rounded-xl bg-black/80 text-white border border-white/40 shadow-xl hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-white/30 active:scale-95`}
             aria-label="Recenter"
           >
-            <MdMyLocation className={`w-6 h-6 ${isLoadingLocation ? 'animate-spin' : ''}`} />
+            <MdMyLocation className={`w-7 h-7 ${isLoadingLocation ? 'animate-spin' : ''}`} />
           </button>
 
           {/* Fullscreen walking HUD */}

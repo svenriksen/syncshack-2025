@@ -8,20 +8,16 @@ export const profileRouter = createTRPCRouter({
     // Query user and profile separately to avoid include typing issues before prisma generate runs
     const user = await ctx.db.user.findUnique({
       where: { id: userId },
-      // @ts-expect-error createdAt is added in the migration; run `prisma generate` after migrating
       select: { id: true, name: true, email: true, image: true, createdAt: true },
     });
     if (!user) throw new Error("User not found");
 
     // Ensure a profile exists
-    // @ts-expect-error Model types may be outdated until you run `prisma generate`
     let profile = await ctx.db.profile.findUnique({ where: { userId } });
     if (!profile) {
-      // @ts-expect-error Model types may be outdated until you run `prisma generate`
       profile = await ctx.db.profile.create({ data: { userId } });
     }
 
-    // @ts-expect-error Model types may be outdated until you run `prisma generate`
     const tripsAgg = await ctx.db.trip.aggregate({
       where: { userId },
       _count: { _all: true },
@@ -41,7 +37,6 @@ export const profileRouter = createTRPCRouter({
       bio: profile?.bio ?? null,
       location: profile?.location ?? null,
       avatar: user.image ?? null,
-      // @ts-expect-error createdAt is added by migration
       joined: user.createdAt ?? null,
       stats: {
         trips,
@@ -69,7 +64,6 @@ export const profileRouter = createTRPCRouter({
       }
 
       // Ensure profile exists then update bio/location
-      // @ts-expect-error Model types may be outdated until you run `prisma generate`
       await ctx.db.profile.upsert({
         where: { userId },
         create: { userId, bio: input.bio ?? null, location: input.location ?? null },
@@ -82,9 +76,7 @@ export const profileRouter = createTRPCRouter({
       // Return the latest view
       // Reuse the get logic minimally
       const user = await ctx.db.user.findUnique({ where: { id: userId } });
-      // @ts-expect-error Model types may be outdated until you run `prisma generate`
       const prof = await ctx.db.profile.findUnique({ where: { userId } });
-      // @ts-expect-error Model types may be outdated until you run `prisma generate`
       const tripsAgg = await ctx.db.trip.aggregate({
         where: { userId },
         _count: { _all: true },
@@ -103,7 +95,6 @@ export const profileRouter = createTRPCRouter({
         bio: prof?.bio ?? null,
         location: prof?.location ?? null,
         avatar: user?.image ?? null,
-        // @ts-expect-error createdAt is added by migration
         joined: user?.createdAt ?? null,
         stats: {
           trips,

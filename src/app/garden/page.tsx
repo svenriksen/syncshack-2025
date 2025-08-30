@@ -16,7 +16,7 @@ export default function GardenPage() {
   const cols = DEFAULT_COLS;
   const rows = DEFAULT_ROWS;
   const [tiles, setTiles] = useState<TreeType[]>(() => new Array<TreeType>(rows * cols).fill("empty"));
-  const [selected, setSelected] = useState<Exclude<TreeType, "empty">>("withered");
+  const [selected, setSelected] = useState<"sapling" | "young" | "mature">("sapling");
   const [mounted, setMounted] = useState(false);
   const [isLocalhost, setIsLocalhost] = useState(false);
 
@@ -68,16 +68,15 @@ export default function GardenPage() {
   }, [gardenData, rows, cols]);
   
   // Client-side prices for optimistic coin updates
-  const CLIENT_TREE_PRICES: Record<Exclude<TreeType, "empty">, number> = {
+  const CLIENT_TREE_PRICES: Record<Exclude<TreeType, "empty" | "withered">, number> = {
     sapling: 100,
     young: 250,
     mature: 600,
-    withered: 0,
-  };
+  } as const;
 
   // Plant tree mutation with optimistic update
   const plantTreeMutation = api.coin.plantTree.useMutation({
-    onMutate: async (variables) => {
+    onMutate: async (variables: { x: number; y: number; type: "sapling" | "young" | "mature" }) => {
       const { x, y, type } = variables;
       const idx = y * cols + x;
 
@@ -103,7 +102,7 @@ export default function GardenPage() {
         tilesArr[idx] = type;
         return { tiles: tilesArr as TreeType[], gardens: old?.gardens ?? [] } as any;
       });
-      const price = CLIENT_TREE_PRICES[type as Exclude<TreeType, "empty">];
+      const price = CLIENT_TREE_PRICES[type as keyof typeof CLIENT_TREE_PRICES] ?? 0;
       utils.coin.getBalance.setData(undefined, (old) => ({ coins: Math.max(0, (old?.coins ?? 0) - price) }));
 
       return { prevGarden, prevBalance, idx };
@@ -140,8 +139,10 @@ export default function GardenPage() {
 
       // Determine refund from existing type for optimistic coin add
       const existingType = tiles[idx];
-      const originalPrice = CLIENT_TREE_PRICES[(existingType as Exclude<TreeType, "empty">) ?? "withered"] ?? 0;
-      const optimisticRefund = existingType !== "withered" && existingType !== "empty" ? Math.floor(originalPrice * 0.5) : 0;
+      const originalPrice = existingType === "sapling" || existingType === "young" || existingType === "mature"
+        ? CLIENT_TREE_PRICES[existingType]
+        : 0;
+      const optimisticRefund = originalPrice > 0 ? Math.floor(originalPrice * 0.5) : 0;
 
       // Optimistically update local tiles
       setTiles((prev) => {
@@ -189,16 +190,14 @@ export default function GardenPage() {
     const currentTile = tiles[idx];
 
     if (currentTile === "empty") {
-      // Guard: prevent planting unaffordable paid trees
-      if (selected !== "withered") {
-        const price = CLIENT_TREE_PRICES[selected];
-        if (coins < price) {
-          toast.error("Not enough coins to plant this tree.");
-          return;
-        }
+      // Guard: prevent planting unaffordable trees
+      const price = CLIENT_TREE_PRICES[selected as keyof typeof CLIENT_TREE_PRICES] ?? 0;
+      if (coins < price) {
+        toast.error("Not enough coins to plant this tree.");
+        return;
       }
 
-      // Plant a tree
+      // Plant a tree (withered is not plantable from UI)
       plantTreeMutation.mutate({ x, y, type: selected });
     } else {
       // Remove the tree
@@ -274,12 +273,6 @@ export default function GardenPage() {
                 disabled={coins < 600}
               >
                 Mature • 600
-              </Button>
-              <Button 
-                variant={selected === "withered" ? "primary" : "secondary"} 
-                onClick={() => setSelected("withered")}
-              >
-                Withered
               </Button>
             </div>
             <div className="rounded-[var(--radius-sm)] bg-[rgb(var(--color-foreground))/0.06] p-3 text-sm text-[rgb(var(--color-foreground))/0.7]">

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
+import type { Prisma } from "@prisma/client";
 
 import {
   createTRPCRouter,
@@ -69,23 +69,41 @@ export const streakRouter = createTRPCRouter({
         yesterday.setDate(yesterday.getDate() - 1);
         
         if (lastActive.getTime() !== yesterday.getTime()) {
-          // Missed a day, reset streak
+          // Missed a day: reset streak and wither the most recently planted tree
           const newStreak = 1;
           const newLongestStreak = Math.max(longestStreak, currentStreak);
-          
-          await db.profile.upsert({
-            where: { userId },
-            create: {
-              userId,
-              currentStreak: newStreak,
-              longestStreak: newLongestStreak,
-              lastActiveDate: today,
-            },
-            update: {
-              currentStreak: newStreak,
-              longestStreak: newLongestStreak,
-              lastActiveDate: today,
-            },
+
+          await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            // Update streak
+            await tx.profile.upsert({
+              where: { userId },
+              create: {
+                userId,
+                currentStreak: newStreak,
+                longestStreak: newLongestStreak,
+                lastActiveDate: today,
+              },
+              update: {
+                currentStreak: newStreak,
+                longestStreak: newLongestStreak,
+                lastActiveDate: today,
+              },
+            });
+
+            // Wither the most recently planted non-withered tree
+            const lastTree = await tx.garden.findFirst({
+              where: {
+                userId,
+                NOT: { type: "withered" },
+              },
+              orderBy: { plantedAt: "desc" },
+            });
+            if (lastTree) {
+              await tx.garden.update({
+                where: { id: lastTree.id },
+                data: { type: "withered", status: "withered" },
+              });
+            }
           });
 
           return {
@@ -93,7 +111,7 @@ export const streakRouter = createTRPCRouter({
             currentStreak: newStreak,
             longestStreak: newLongestStreak,
             multiplier: Math.min(newStreak * STREAK_CONFIG.MULTIPLIER_PER_DAY, STREAK_CONFIG.MAX_MULTIPLIER),
-            message: "Streak reset and started new day",
+            message: "Streak reset, last tree withered, and started new day",
           };
         }
       }
@@ -143,19 +161,37 @@ export const streakRouter = createTRPCRouter({
       // Update longest streak if current streak was longer
       const newLongestStreak = Math.max(longestStreak, currentStreak);
 
-      await db.profile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          currentStreak: 0,
-          longestStreak: newLongestStreak,
-          lastActiveDate: today,
-        },
-        update: {
-          currentStreak: 0,
-          longestStreak: newLongestStreak,
-          lastActiveDate: today,
-        },
+      await db.$transaction(async (tx: Prisma.TransactionClient) => {
+        // Update streak
+        await tx.profile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            currentStreak: 0,
+            longestStreak: newLongestStreak,
+            lastActiveDate: today,
+          },
+          update: {
+            currentStreak: 0,
+            longestStreak: newLongestStreak,
+            lastActiveDate: today,
+          },
+        });
+
+        // Wither the most recently planted non-withered tree
+        const lastTree = await tx.garden.findFirst({
+          where: {
+            userId,
+            NOT: { type: "withered" },
+          },
+          orderBy: { plantedAt: "desc" },
+        });
+        if (lastTree) {
+          await tx.garden.update({
+            where: { id: lastTree.id },
+            data: { type: "withered", status: "withered" },
+          });
+        }
       });
 
       return {
