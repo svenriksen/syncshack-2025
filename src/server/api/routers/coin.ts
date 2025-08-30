@@ -36,11 +36,11 @@ export const coinRouter = createTRPCRouter({
         orderBy: { plantedAt: "asc" },
       });
 
-      // Convert to 8x10 grid format
-      const tiles = new Array(80).fill("empty");
+      // Convert to 10x10 grid format
+      const tiles = new Array(100).fill("empty");
       gardens.forEach((garden) => {
         const index = garden.y * 10 + garden.x;
-        if (index >= 0 && index < 80) {
+        if (index >= 0 && index < 100) {
           tiles[index] = garden.type;
         }
       });
@@ -56,7 +56,7 @@ export const coinRouter = createTRPCRouter({
     .input(
       z.object({
         x: z.number().min(0).max(9),
-        y: z.number().min(0).max(7),
+        y: z.number().min(0).max(9),
         type: z.enum(["sapling", "young", "mature", "withered"]),
       })
     )
@@ -144,7 +144,7 @@ export const coinRouter = createTRPCRouter({
     .input(
       z.object({
         x: z.number().min(0).max(9),
-        y: z.number().min(0).max(7),
+        y: z.number().min(0).max(9),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -170,7 +170,7 @@ export const coinRouter = createTRPCRouter({
       }
 
       // Calculate refund (50% of original price for non-withered trees)
-      const originalPrice = TREE_PRICES[existingTree.type];
+      const originalPrice = TREE_PRICES[existingTree.type as keyof typeof TREE_PRICES];
       const refund = existingTree.type !== "withered" ? Math.floor(originalPrice * 0.5) : 0;
 
       // Use transaction to ensure atomicity

@@ -37,9 +37,14 @@ export function GardenPreview({ cols, rows, tiles, height, className = "relative
   return (
     <div className="h-[240px] md:h-[65vh]">
       {mounted && (
-        <GardenIso3D height={height ?? "100%"} cols={c} rows={r} tiles={normalized} className={className} />
+        <GardenIso3D 
+          height={height ?? "100%"} 
+          cols={c} 
+          rows={r} 
+          tiles={gardenTiles?.length ? gardenTiles : normalized} 
+          className={className} 
+        />
       )}
     </div>
-
   );
 }

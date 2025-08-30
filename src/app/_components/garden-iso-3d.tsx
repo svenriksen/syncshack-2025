@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, invalidate, useFrame } from "@react-three/fiber";
 import { OrthographicCamera, Bounds } from "@react-three/drei";
 import * as THREE from "three";
@@ -15,7 +15,7 @@ const cloudManager = (() => {
   (root as any).raycast = () => null;
   const slots: CloudSlot[] = [];
   const maxClouds = 4;
-  let bounds: CloudBounds = { left: -10, right: 10, minY: 2.2, maxY: 3, minZ: -0.2, maxZ: 0.25 };
+  let bounds: CloudBounds = { left: -10, right: 10, minY: 1, maxY: 10, minZ: -0.2, maxZ: 0.25 };
   // randomized spawn interval
   const spawnMinSec = 1.2;
   const spawnMaxSec = 3.2;
@@ -200,12 +200,19 @@ function TileMesh({
 
 const MemoTileMesh = React.memo(TileMesh);
 
-function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
+const TRUNK_COLOR = new THREE.Color("#065f46");
+const GRAY_COLOR = new THREE.Color("#6b7280");
+const GREEN_A = new THREE.Color("#10b981");
+const GREEN_A_EM = new THREE.Color("#064e3b");
+const GREEN_B = new THREE.Color("#34d399");
+const GREEN_C = new THREE.Color("#22c55e");
+const GREEN_D = new THREE.Color("#16a34a");
+
+function TreeMesh({ type, animated = true }: { type: Exclude<TreeType, "empty">; animated?: boolean }) {
   const group = useRef<THREE.Group>(null!);
-  const trunkColor = new THREE.Color("#065f46");
-  const gray = new THREE.Color("#6b7280");
-  // Slight idle sway for foliage
+  // Slight idle sway for foliage when animations enabled
   useFrame(({ clock }) => {
+    if (!animated) return;
     const t = clock.getElapsedTime();
     if (group.current) {
       group.current.rotation.z = Math.sin(t * 0.4) * 0.02;
@@ -219,16 +226,16 @@ function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
           {/* canopy cluster */}
           <mesh position={[0, 0.25, 0]}>
             <sphereGeometry args={[0.25, 18, 18]} />
-            <meshStandardMaterial color={new THREE.Color("#10b981")} emissive={new THREE.Color("#064e3b")} emissiveIntensity={0.25} />
+            <meshStandardMaterial color={GREEN_A} emissive={GREEN_A_EM} emissiveIntensity={0.25} />
           </mesh>
           <mesh position={[0.16, 0.22, 0]}>
             <sphereGeometry args={[0.16, 16, 16]} />
-            <meshStandardMaterial color={new THREE.Color("#34d399")} />
+            <meshStandardMaterial color={GREEN_B} />
           </mesh>
           {/* trunk */}
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.05, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={trunkColor} roughness={0.9} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.9} />
           </mesh>
         </group>
       );
@@ -237,19 +244,19 @@ function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
         <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
           <mesh position={[0, 0.42, 0]}>
             <sphereGeometry args={[0.34, 18, 18]} />
-            <meshStandardMaterial color={new THREE.Color("#22c55e")} emissive={new THREE.Color("#064e3b")} emissiveIntensity={0.3} />
+            <meshStandardMaterial color={GREEN_C} emissive={GREEN_A_EM} emissiveIntensity={0.3} />
           </mesh>
           <mesh position={[0.26, 0.3, 0]}>
             <sphereGeometry args={[0.22, 16, 16]} />
-            <meshStandardMaterial color={new THREE.Color("#34d399")} />
+            <meshStandardMaterial color={GREEN_B} />
           </mesh>
           <mesh position={[-0.22, 0.28, 0.05]}>
             <sphereGeometry args={[0.18, 16, 16]} />
-            <meshStandardMaterial color={new THREE.Color("#16a34a")} />
+            <meshStandardMaterial color={GREEN_D} />
           </mesh>
           <mesh position={[0, 0.12, 0]}>
             <cylinderGeometry args={[0.07, 0.07, 0.34, 14]} />
-            <meshStandardMaterial color={trunkColor} roughness={0.95} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} />
           </mesh>
         </group>
       );
@@ -259,7 +266,7 @@ function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
           {/* Layered cones + extra crown */}
           <mesh position={[0, 0.5, 0]}>
             <coneGeometry args={[0.36, 0.65, 14]} />
-            <meshStandardMaterial color={new THREE.Color("#22c55e")} />
+            <meshStandardMaterial color={GREEN_C} />
           </mesh>
           <mesh position={[0, 0.25, 0]}>
             <coneGeometry args={[0.28, 0.5, 14]} />
@@ -267,7 +274,7 @@ function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
           </mesh>
           <mesh position={[0, 0.04, 0]}>
             <cylinderGeometry args={[0.06, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={trunkColor} roughness={0.95} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} />
           </mesh>
         </group>
       );
@@ -276,7 +283,7 @@ function TreeMesh({ type }: { type: Exclude<TreeType, "empty"> }) {
         <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
           <mesh position={[0, 0.22, 0]}>
             <sphereGeometry args={[0.2, 12, 12]} />
-            <meshStandardMaterial color={gray} />
+            <meshStandardMaterial color={GRAY_COLOR} />
           </mesh>
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 0.2, 8]} />
@@ -295,7 +302,7 @@ function AimCamera({ target = [0, 0, 0] as [number, number, number] }) {
   return null;
 }
 
-export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, className = "", height = "min(520px, 60vh)", projection = "dimetric" }: GardenIso3DProps) {
+export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, className = "", height = "min(520px, 60vh)", projection = "isometric" }: GardenIso3DProps) {
   const total = rows * cols;
   const normalized = tiles.slice(0, total).concat(Array(Math.max(0, total - tiles.length)).fill("empty"));
   const { positions, width, depth } = useGridPositions(cols, rows);
@@ -303,6 +310,16 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   useEffect(() => {
     invalidate();
   }, [tiles, cols, rows]);
+  // Reduced motion preference
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReducedMotion(!!m.matches);
+    apply();
+    try { m.addEventListener('change', apply); } catch { m.addListener(apply); }
+    return () => { try { m.removeEventListener('change', apply); } catch { m.removeListener(apply); } };
+  }, []);
   // Hover handling via global plane
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   // grid metrics (must match useGridPositions defaults: spacing=1, gap=0.1)
@@ -329,17 +346,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
 
   const ambientColor = useMemo(() => new THREE.Color(0xffffff), []);
 
-  // Animation ticker (must be used inside <Canvas>)
-  const Ticker = () => {
-    // Keep the demand loop alive for animations (clouds, hover effects)
-    useEffect(() => {
-      invalidate(); // kickstart after first paint
-    }, []);
-    useFrame(() => {
-      invalidate(); // request next frame continuously
-    });
-    return null;
-  };
+  // No continuous ticker; clouds and interactions will invalidate on demand
 
   // (Background removed per request)
 
@@ -347,13 +354,14 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   const Clouds = () => {
     const left = -width / 2 - 2.0;
     const right = width / 2 + 2.0;
-    const minY = 0, maxY = 4.5;
+    const minY = 2.2, maxY = 4.5;
     const minZ = -0.2, maxZ = 0.25;
     const { scene } = useThree();
 
     useEffect(() => {
-      cloudManager.attach(scene);
-    }, [scene]);
+      if (!reducedMotion) cloudManager.attach(scene);
+      return () => cloudManager.stop();
+    }, [scene, reducedMotion]);
 
     useEffect(() => {
       cloudManager.setBounds({ left, right, minY, maxY, minZ, maxZ });
@@ -414,13 +422,18 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
 
   // Camera position by projection
   const k = 8;
+  // Classic isometric uses equal axes (x=y=z). Dimetric tilts the Y axis more.
   const camPos: [number, number, number] =
-    projection === "isometric" ? [k, k * Math.SQRT2, k] : [k, k, k];
+    projection === "isometric" ? [k, k, k] : [k, k * Math.SQRT2, k];
 
   return (
     <div className={className} style={{ width: "100%", height }}>
-      <Canvas dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }} shadows={false} frameloop="demand">
-        <Ticker />
+      <Canvas
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: true, depth: true }}
+        shadows={false}
+        frameloop="demand"
+      >
         {/* Lights (warmer) */}
         <hemisphereLight color={0xfff1e0} groundColor={0x5b6b7a} intensity={0.6} />
         <ambientLight color={new THREE.Color('#fff4e6')} intensity={0.35} />
@@ -428,12 +441,12 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
 
         {/* Orthographic camera with isometric-like angle */}
         {/* Camera: 45–45 dimetric or classic isometric (equal-axes) */}
-        <OrthographicCamera makeDefault position={camPos} near={0.1} far={100} zoom={55} />
+        <OrthographicCamera makeDefault position={camPos} near={0.1} far={100} zoom={75} />
         <AimCamera target={[0, 0, 0]} />
         {/* Moving clouds across X (outside Bounds) */}
-        <Clouds />
+        {!reducedMotion && <Clouds />}
         {/* Auto-fit the scene into view with a margin (garden only) */}
-        <Bounds fit observe margin={1.1} clip>
+        <Bounds fit observe margin={1.05} clip>
           {/* World un-rotated; isometric comes purely from camera */}
           <group rotation={[0, 0, 0]} scale={[1, 1, 1]}>
             {/* Island base: dirt block with grass carpet (lowered so tiles are above it) */}
@@ -448,7 +461,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
               </mesh>
             </group>
             {/* Decorative perimeter */}
-            <Fence />
+            {!reducedMotion && <Fence />}
             {/* Tiles */}
             {positions.map((pos, i) => {
               const t = normalized[i];
@@ -456,7 +469,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                 <group key={i} position={pos}>
                   <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} />
                   {/* Tree */}
-                  {isTree(t) ? <TreeMesh type={t} /> : null}
+                  {isTree(t) ? <TreeMesh type={t} animated={!reducedMotion} /> : null}
                 </group>
               );
             })}
@@ -467,9 +480,11 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
               onPointerMove={(e) => {
                 const p = e.point; // world coords intersecting this plane
                 const idx = indexFromXZ(p.x, p.z);
-                setHoveredIndex(idx);
-                if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
-                invalidate();
+                if (idx !== hoveredIndex) {
+                  setHoveredIndex(idx);
+                  if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
+                  invalidate();
+                }
               }}
               onClick={(e) => {
                 const p = e.point;
@@ -478,9 +493,11 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                 invalidate();
               }}
               onPointerLeave={() => {
-                setHoveredIndex(null);
-                if (typeof document !== 'undefined') document.body.style.cursor = 'default';
-                invalidate();
+                if (hoveredIndex !== null) {
+                  setHoveredIndex(null);
+                  if (typeof document !== 'undefined') document.body.style.cursor = 'default';
+                  invalidate();
+                }
               }}
             >
               <planeGeometry args={[width + 0.2, depth + 0.2]} />
