@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
+import { auth } from "@/server/auth";
 
-export default function ImpactPage() {
-  const { data: session } = useSession();
-  if (!session) return redirect("/auth");
+export default async function ImpactPage() {
+  const session = await auth();
+  if (!session) redirect("/auth");
 
   return (
     <div className="space-y-6">
