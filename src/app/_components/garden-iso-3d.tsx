@@ -231,10 +231,11 @@ function TileMesh({
   maps: { grass: THREE.Texture; grassRough?: THREE.Texture; dirt: THREE.Texture; dirtRough?: THREE.Texture };
 }) {
   const ref = useRef<THREE.Mesh>(null!);
-  // Stylized grass tile colors (lightened), memoized to avoid recreating per render
+  // Stylized grass tile colors (lightened more), memoized to avoid recreating per render
   // Alternating tiles use slightly different light greens for realism
-  const topColor = useMemo(() => new THREE.Color(checker ? "#eaffb8" : "#dcfda5"), [checker]);
-  const topColorHover = useMemo(() => new THREE.Color("#fbffcf"), []);
+  const topColor = useMemo(() => new THREE.Color(checker ? "#baf7a1" : "#aef397"), [checker]);
+  // Darker hover tint for stronger contrast
+  const topColorHover = useMemo(() => new THREE.Color("#5fbf5a"), []);
   const sideColor = useMemo(() => new THREE.Color("#7c4b2d"), []);
   const outline = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.3), []);
   const outlineHover = useMemo(() => new THREE.Color(1, 1, 1).multiplyScalar(0.5), []);
@@ -257,8 +258,8 @@ function TileMesh({
         <primitive object={geoms.top} />
         <meshStandardMaterial
           color={hovered ? topColorHover : topColor}
-          emissive={hovered ? topColorHover : undefined}
-          emissiveIntensity={hovered ? 0.25 : 0}
+          emissive={undefined}
+          emissiveIntensity={0}
           roughness={0.8}
           metalness={0}
           map={maps.grass}
@@ -431,8 +432,9 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
 
   // Shared lightweight textures (cached) for materials
   const textureMaps = useMemo(() => {
-    const grass = createNoiseTexture({ size: 128, scale: 10, contrast: 1.0, seed: 11 });
-    const grassRough = createNoiseTexture({ size: 128, scale: 6, contrast: 0.8, seed: 12 });
+    // Soften grass noise so it doesn't look patchy/muddy
+    const grass = createNoiseTexture({ size: 128, scale: 6, contrast: 0.6, seed: 11 });
+    const grassRough = createNoiseTexture({ size: 128, scale: 6, contrast: 0.4, seed: 12 });
     // Color maps should be in sRGB for correct brightness perception
     // Roughness/metalness maps stay in linear space (default)
     (grass as any).colorSpace = THREE.SRGBColorSpace;
@@ -451,6 +453,52 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     leaves.repeat.set(2, 2);
     return { grass, grassRough, dirt, dirtRough, bark, leaves };
   }, []);
+
+  // If a real texture exists in /public/textures, load it and replace the procedural grass maps in place
+  useEffect(() => {
+    let cancelled = false;
+    const loader = new THREE.TextureLoader();
+    const applyGrass = (tex: THREE.Texture) => {
+      if (cancelled) return;
+      (tex as any).colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.minFilter = THREE.LinearMipMapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.repeat.set(2, 2);
+      // update in place so materials see the change
+      textureMaps.grass.image = tex.image as any;
+      textureMaps.grass.needsUpdate = true;
+      invalidate();
+    };
+    const applyGrassRough = (tex: THREE.Texture) => {
+      if (cancelled) return;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.minFilter = THREE.LinearMipMapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.repeat.set(2, 2);
+      textureMaps.grassRough!.image = tex.image as any;
+      textureMaps.grassRough!.needsUpdate = true;
+      invalidate();
+    };
+    // Try load; failures silently keep procedural
+    try {
+      loader.load(
+        '/textures/grass.jpg',
+        (t) => applyGrass(t),
+        undefined,
+        () => {}
+      );
+      loader.load(
+        '/textures/grass_rough.jpg',
+        (t) => applyGrassRough(t),
+        undefined,
+        () => {}
+      );
+    } catch {}
+    return () => { cancelled = true; };
+  }, [textureMaps.grass, textureMaps.grassRough]);
 
   const handleTile = (i: number) => onTileClick?.(i);
 
@@ -573,10 +621,10 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
         shadows={false}
         frameloop="always"
       >
-        {/* Lights (warmer) */}
-        <hemisphereLight color={0xfff1e0} groundColor={0x5b6b7a} intensity={0.6} />
-        <ambientLight color={new THREE.Color('#fff4e6')} intensity={0.35} />
-        <directionalLight position={[3, 6, 3]} intensity={0.7} color={new THREE.Color('#ffd7a8')} />
+        {/* Lights (cooler daylight to avoid yellow/brown tint on grass) */}
+        <hemisphereLight color={0xe8fff6} groundColor={0x6b7a73} intensity={0.75} />
+        <ambientLight color={new THREE.Color('#ffffff')} intensity={0.45} />
+        <directionalLight position={[3, 6, 3]} intensity={0.85} color={new THREE.Color('#ffffff')} />
 
         {/* Sun visual (outside Bounds so it doesn't affect fit) */}
         <Sun />
@@ -599,7 +647,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
               </mesh>
               <mesh position={[0, 0.31, 0]} raycast={() => null}>
                 <boxGeometry args={[width + 1.1, 0.06, depth + 1.1]} />
-                <meshStandardMaterial color={new THREE.Color("#eaffb8")} roughness={0.9} map={textureMaps.grass} roughnessMap={textureMaps.grassRough} />
+                <meshStandardMaterial color={new THREE.Color("#baf7a1")} roughness={0.8} map={textureMaps.grass} />
               </mesh>
             </group>
             {/* Decorative perimeter */}
