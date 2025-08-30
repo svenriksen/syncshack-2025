@@ -6,6 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { MdMyLocation } from "react-icons/md";
+import { v4 as uuidv4 } from "uuid"; // install with `npm i uuid`
 
 interface MapBoxProps {
   onRouteUpdate?: (distance: number, duration: number) => void;
@@ -34,25 +35,39 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
   const watchId = useRef<number | null>(null);
 
   // Function to get suggestions from Mapbox Geocoding API
+
+
   const getSuggestions = async (query: string) => {
     if (!query) {
       setSuggestions([]);
       return;
     }
+    console.log("Query: ", query)
 
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          query
-        )}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&country=AU`
+      // Use a UUID for each search session (keep it until user picks one result)
+      const sessionToken = uuidv4();
+
+      const url = new URL("https://api.mapbox.com/search/searchbox/v1/suggest");
+      url.searchParams.set("q", query);
+      url.searchParams.set("limit", "5");
+      url.searchParams.set("country", "AU");
+      url.searchParams.set("session_token", sessionToken);
+      url.searchParams.set(
+          "access_token",
+          process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string
       );
+      const response = await fetch(url.toString());
       const data = await response.json();
-      setSuggestions(data.features);
+      console.log("Suggestions data: ", data.suggestions);
+      // suggestions array is under `suggestions`
+      setSuggestions(data.suggestions || []);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       setSuggestions([]);
     }
   };
+
 
   // Function to set route
   const setRoute = (start: [number, number], end: [number, number]) => {
@@ -63,21 +78,38 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
   };
 
   // Function to handle suggestion selection
-  const handleSuggestionSelect = (suggestion: {place_name: string; center: [number, number]}) => {
-    if (activeInput === "start") {
-      setStartLocation(suggestion.place_name);
-      if (directions.current) {
-        directions.current.setOrigin(suggestion.center);
-      }
-    } else if (activeInput === "end") {
-      setEndLocation(suggestion.place_name);
-      if (directions.current) {
-        directions.current.setDestination(suggestion.center);
-      }
+  const handleSuggestionSelect = async (suggestion: any) => {
+    const sessionToken = uuidv4(); // New session token for retrieve
+
+    let coords: [number, number] | null = null;
+    let label = "";
+
+    if (suggestion.mapbox_id) {
+      // It’s from Search Box API → must call retrieve to get coordinates
+      const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?session_token=${sessionToken}&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      coords = data.features?.[0]?.geometry?.coordinates ?? null;
+      label = suggestion.name || suggestion.place_formatted;
+    } else if (suggestion.center) {
+      // Geocoding fallback
+      coords = suggestion.center;
+      label = suggestion.place_name;
     }
+
+    if (activeInput === "start") {
+      setStartLocation(label);
+      if (coords) directions.current?.setOrigin(coords);
+    } else if (activeInput === "end") {
+      setEndLocation(label);
+      if (coords) directions.current?.setDestination(coords);
+    }
+
+    // ✅ Close the dropdown
     setSuggestions([]);
     setActiveInput(null);
   };
+
 
   // Function to get current location
   const getCurrentLocation = () => {
@@ -341,8 +373,8 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
           <div className="w-8 h-8 flex items-center justify-center bg-[#3BB2D0] text-white rounded-full">A</div>
           <div className="relative flex-1">
             <div className="flex items-center">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={startLocation}
                 onChange={(e) => {
                   setStartLocation(e.target.value);
@@ -353,7 +385,7 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
                 placeholder="Choose a starting place"
                 className="w-full px-3 py-2 pr-10 bg-white/10 border border-white/20 rounded-md text-white"
               />
-              <button 
+              <button
                 onClick={getCurrentLocation}
                 className="absolute right-2 p-2 text-white/60 hover:text-white transition-colors"
                 disabled={isLoadingLocation}
@@ -369,7 +401,7 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
                     className="w-full px-4 py-2 text-left text-white hover:bg-white/10 transition-colors"
                     onClick={() => handleSuggestionSelect(suggestion)}
                   >
-                    {suggestion.place_name}
+                    {suggestion.name}
                   </button>
                 ))}
               </div>
@@ -379,8 +411,8 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
         <div className="relative flex items-center gap-2">
           <div className="w-8 h-8 flex items-center justify-center bg-[#FF3B30] text-white rounded-full">B</div>
           <div className="relative flex-1">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={endLocation}
               onChange={(e) => {
                 setEndLocation(e.target.value);
@@ -399,7 +431,7 @@ export function MapBox({ onRouteUpdate }: MapBoxProps) {
                     className="w-full px-4 py-2 text-left text-white hover:bg-white/10 transition-colors"
                     onClick={() => handleSuggestionSelect(suggestion)}
                   >
-                    {suggestion.place_name}
+                    {suggestion.name}
                   </button>
                 ))}
               </div>
