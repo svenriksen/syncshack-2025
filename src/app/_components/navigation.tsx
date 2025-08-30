@@ -26,9 +26,10 @@ export function Navigation() {
           <div className="ml-2 h-8 w-16 animate-pulse rounded-[var(--radius-sm)] bg-white/10" />
         ) : session ? (
           <div className="ml-2 flex items-center gap-2">
-            <span className="text-xs text-white/60">
+            <Link className="hover:text-white" href="/profile"><span className="text-xs text-white/60">
               {session.user?.name || session.user?.email}
-            </span>
+            </span></Link>
+            
             <Button
               variant="secondary"
               size="sm"
@@ -75,6 +76,9 @@ export function Navigation() {
               <div className="mt-2 h-8 w-full animate-pulse rounded-[var(--radius-sm)] bg-white/10" />
             ) : session ? (
               <div className="mt-2 flex items-center justify-between gap-2">
+                <Link className="truncate text-xs hover:text-white" href="/profile" onClick={() => setOpen(false)}>
+                  Profile
+                </Link>
                 <span className="truncate text-xs text-white/60">
                   {session.user?.name || session.user?.email}
                 </span>
