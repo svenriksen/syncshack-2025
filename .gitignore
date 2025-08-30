@@ -45,4 +45,10 @@ yarn-error.log*
 # idea files
 .idea
 
-plan.md
+**/plan.md
+
+.windsurf
+
+# backup files
+*.backup
+*.bak

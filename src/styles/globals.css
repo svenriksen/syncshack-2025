@@ -3,4 +3,137 @@
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Brand palette: Urban Garden */
+  --color-bg: 14 14 16; /* near-black */
+  --color-card: 22 22 26; /* dark slate */
+  --color-muted: 120 120 128; /* gray */
+  --color-foreground: 242 243 245; /* off-white */
+
+  --color-primary: 16 185 129; /* emerald 500 */
+  --color-primary-600: 5 150 105; /* emerald 600 */
+  --color-primary-700: 4 120 87; /* emerald 700 */
+
+  --color-accent: 34 197 94; /* green 500 */
+  --color-accent-600: 22 163 74; /* green 600 */
+  --color-warning: 245 158 11; /* amber 500 */
+  --color-danger: 239 68 68; /* red 500 */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.35);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.35);
 }
+
+/* Base styles */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  @apply bg-[rgb(var(--color-bg))] text-[rgb(var(--color-foreground))] antialiased;
+}
+
+/* Light theme overrides */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="light"] {
+  /* Softer light neutrals */
+  --color-bg: 245 246 248;      /* very light gray */
+  --color-card: 255 255 255;    /* white */
+  --color-muted: 102 112 133;   /* slate-ish */
+  --color-foreground: 28 30 33; /* near-black text */
+
+  /* Keep brand colors; slightly adjust shadows for light */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.12);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.16);
+}
+
+.card {
+  @apply rounded-[var(--radius-md)] bg-[rgb(var(--color-card))] shadow-[var(--shadow-sm)];
+}
+
+.container-slim {
+  /* Centered container: full width on mobile, 80% width on desktop */
+  @apply mx-auto w-full max-w-5xl px-4 md:px-6 md:max-w-none md:w-[80%];
+}
+
+.grid-tiles {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  aspect-ratio: 1/1;
+  @apply rounded-[var(--radius-sm)] bg-[rgb(var(--color-card))] outline outline-1 outline-[rgba(255,255,255,0.06)];
+}
+
+/* Isometric garden helpers */
+.iso-board {
+  /* Center and give room for perspective */
+  position: relative;
+  width: 100%;
+  padding-top: 56%; /* responsive height */
+  perspective: 1000px;
+}
+
+.iso-plane {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transform: rotateX(60deg) rotateZ(45deg) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+.iso-grid {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(10, 48px);
+  grid-auto-rows: 48px;
+  gap: 6px;
+}
+
+.iso-tile {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  transform: rotateZ(-45deg) rotateX(-60deg);
+  transform-style: preserve-3d;
+}
+
+.iso-tile .face {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--color-card));
+  border-radius: 6px;
+  outline: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+
+/* Tree variants as glowing centers */
+.iso-tree::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -60%);
+  border-radius: 9999px;
+  background: rgb(var(--color-primary));
+  box-shadow: 0 0 14px rgba(16,185,129,0.8);
+}
+
+.iso-tree.young::after { background: rgb(var(--color-accent)); box-shadow: 0 0 14px rgba(34,197,94,0.8); }
+.iso-tree.mature::after { background: #4ade80; box-shadow: 0 0 16px rgba(74,222,128,0.9); }
+.iso-tree.withered::after { background: #6b7280; box-shadow: 0 0 8px rgba(107,114,128,0.6); }
