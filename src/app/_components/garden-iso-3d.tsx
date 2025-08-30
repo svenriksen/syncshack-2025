@@ -93,7 +93,7 @@ const cloudManager = (() => {
   (root as any).raycast = () => null;
   const slots: CloudSlot[] = [];
   const maxClouds = 4;
-  let bounds: CloudBounds = { left: -10, right: 10, minY: 1, maxY: 10, minZ: -0.2, maxZ: 0.25 };
+  let bounds: CloudBounds = { left: -10, right: 10, minY: -10, maxY: 10, minZ: -0.2, maxZ: 0.25 };
   // randomized spawn interval
   const spawnMinSec = 1.2;
   const spawnMaxSec = 3.2;
