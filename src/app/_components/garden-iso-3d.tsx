@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, invalidate, useFrame } from "@react-three/fiber";
 import { OrthographicCamera, Bounds } from "@react-three/drei";
 import * as THREE from "three";
+import { houseIndices } from "@/lib/garden";
 
 // Lightweight procedural texture generator (noise-based) for PBR-like detail
 function createNoiseTexture({
@@ -183,7 +184,7 @@ const cloudManager = (() => {
   };
 })();
 
-export type TreeType = "empty" | "sapling" | "young" | "mature" | "withered";
+export type TreeType = "empty" | "pine" | "bamboo" | "maple" | "bonsai" | "sakura";
 
 export type GardenIso3DProps = {
   cols?: number; // default 10
@@ -300,74 +301,119 @@ function TreeMesh({ type, animated = true, maps }: { type: Exclude<TreeType, "em
   });
 
   switch (type) {
-    case "sapling":
+    case "pine":
       return (
-        <group ref={group} position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
-          {/* canopy cluster */}
-          <mesh position={[0, 0.25, 0]}>
-            <sphereGeometry args={[0.25, 18, 18]} />
-            <meshStandardMaterial color={GREEN_A} emissive={GREEN_A_EM} emissiveIntensity={0.25} map={maps.leaves} />
+        <group ref={group} position={[0, 0.08, 0]} scale={[1.45, 1.45, 1.45]} raycast={() => null}>
+          {/* layered conical pine */}
+          <mesh position={[0, 0.5, 0]}>
+            <coneGeometry args={[0.32, 0.6, 10]} />
+            <meshStandardMaterial color={GREEN_C} map={maps.leaves} />
           </mesh>
-          <mesh position={[0.16, 0.22, 0]}>
-            <sphereGeometry args={[0.16, 16, 16]} />
+          <mesh position={[0, 0.28, 0]}>
+            <coneGeometry args={[0.26, 0.45, 10]} />
             <meshStandardMaterial color={GREEN_B} map={maps.leaves} />
           </mesh>
-          {/* trunk */}
-          <mesh position={[0, 0.06, 0]}>
-            <cylinderGeometry args={[0.05, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.9} map={maps.bark} />
+          <mesh position={[0, 0.08, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 0.24, 12]} />
+            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} map={maps.bark} />
           </mesh>
         </group>
       );
-    case "young":
+    case "bamboo":
       return (
-        <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
+        <group ref={group} position={[0, 0.08, 0]} scale={[1.2, 1.2, 1.2]} raycast={() => null}>
+          {/* bamboo culms */}
+          {[-0.08, 0, 0.08].map((x, i) => (
+            <group key={i} position={[x, 0.1 + (i % 2) * 0.02, 0]}>
+              {[0, 1, 2, 3].map((seg) => (
+                <mesh key={seg} position={[0, 0.12 + seg * 0.18, 0]}>
+                  <cylinderGeometry args={[0.035, 0.035, 0.16, 10]} />
+                  <meshStandardMaterial color={new THREE.Color("#84cc16")} roughness={0.7} map={maps.leaves} />
+                </mesh>
+              ))}
+              {/* nodes */}
+              {[0, 1, 2, 3].map((seg) => (
+                <mesh key={`n-${seg}`} position={[0, 0.2 + seg * 0.18, 0]}>
+                  <torusGeometry args={[0.036, 0.008, 6, 14]} />
+                  <meshStandardMaterial color={new THREE.Color("#65a30d")} roughness={0.9} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+          {/* leaves fan */}
+          {[-0.12, 0.12].map((x, i) => (
+            <mesh key={`leaf-${i}`} position={[x, 0.92, 0]} rotation={[Math.PI / 2.4, 0, 0]}>
+              <coneGeometry args={[0.22, 0.36, 12]} />
+              <meshStandardMaterial color={GREEN_A} map={maps.leaves} />
+            </mesh>
+          ))}
+        </group>
+      );
+    case "maple":
+      return (
+        <group ref={group} position={[0, 0.08, 0]} scale={[1.4, 1.4, 1.4]} raycast={() => null}>
+          {/* broad canopy */}
           <mesh position={[0, 0.42, 0]}>
-            <sphereGeometry args={[0.34, 18, 18]} />
-            <meshStandardMaterial color={GREEN_C} emissive={GREEN_A_EM} emissiveIntensity={0.3} map={maps.leaves} />
+            <sphereGeometry args={[0.34, 20, 20]} />
+            <meshStandardMaterial color={new THREE.Color("#ef4444")} map={maps.leaves} />
           </mesh>
-          <mesh position={[0.26, 0.3, 0]}>
+          <mesh position={[0.22, 0.34, 0.04]}>
             <sphereGeometry args={[0.22, 16, 16]} />
-            <meshStandardMaterial color={GREEN_B} map={maps.leaves} />
+            <meshStandardMaterial color={new THREE.Color("#f97316")} map={maps.leaves} />
           </mesh>
-          <mesh position={[-0.22, 0.28, 0.05]}>
-            <sphereGeometry args={[0.18, 16, 16]} />
-            <meshStandardMaterial color={GREEN_D} map={maps.leaves} />
+          <mesh position={[-0.2, 0.3, -0.06]}>
+            <sphereGeometry args={[0.2, 16, 16]} />
+            <meshStandardMaterial color={new THREE.Color("#fb7185")} map={maps.leaves} />
           </mesh>
           <mesh position={[0, 0.12, 0]}>
             <cylinderGeometry args={[0.07, 0.07, 0.34, 14]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} map={maps.bark} />
+            <meshStandardMaterial color={new THREE.Color("#6b3f2b")} roughness={0.95} map={maps.bark} />
           </mesh>
         </group>
       );
-    case "mature":
+    case "bonsai":
       return (
-        <group position={[0, 0.08, 0]} scale={[1.55, 1.55, 1.55]} raycast={() => null}>
-          {/* Layered cones + extra crown */}
-          <mesh position={[0, 0.5, 0]}>
-            <coneGeometry args={[0.36, 0.65, 14]} />
+        <group ref={group} position={[0, 0.06, 0]} scale={[1.1, 1.1, 1.1]} raycast={() => null}>
+          {/* pot */}
+          <mesh position={[0, 0.02, 0]}>
+            <cylinderGeometry args={[0.18, 0.2, 0.06, 16]} />
+            <meshStandardMaterial color={new THREE.Color("#92400e")} roughness={0.9} />
+          </mesh>
+          {/* trunk with bend */}
+          <mesh position={[0, 0.18, 0]} rotation={[0, 0, -0.3]}>
+            <cylinderGeometry args={[0.04, 0.06, 0.28, 10]} />
+            <meshStandardMaterial color={new THREE.Color("#5b3a2e")} map={maps.bark} />
+          </mesh>
+          {/* canopy pads */}
+          <mesh position={[0.12, 0.34, 0]}>
+            <sphereGeometry args={[0.16, 16, 16]} />
+            <meshStandardMaterial color={GREEN_D} map={maps.leaves} />
+          </mesh>
+          <mesh position={[-0.08, 0.28, 0.06]}>
+            <sphereGeometry args={[0.12, 14, 14]} />
             <meshStandardMaterial color={GREEN_C} map={maps.leaves} />
           </mesh>
-          <mesh position={[0, 0.25, 0]}>
-            <coneGeometry args={[0.28, 0.5, 14]} />
-            <meshStandardMaterial color={new THREE.Color("#4ade80")} map={maps.leaves} />
-          </mesh>
-          <mesh position={[0, 0.04, 0]}>
-            <cylinderGeometry args={[0.06, 0.06, 0.22, 12]} />
-            <meshStandardMaterial color={TRUNK_COLOR} roughness={0.95} map={maps.bark} />
-          </mesh>
         </group>
       );
-    case "withered":
+    case "sakura":
       return (
-        <group position={[0, 0.08, 0]} scale={[1.35, 1.35, 1.35]} raycast={() => null}>
-          <mesh position={[0, 0.22, 0]}>
-            <sphereGeometry args={[0.2, 12, 12]} />
-            <meshStandardMaterial color={GRAY_COLOR} map={maps.leaves} />
+        <group ref={group} position={[0, 0.08, 0]} scale={[1.45, 1.45, 1.45]} raycast={() => null}>
+          {/* pink blossoms */}
+          <mesh position={[0, 0.4, 0]}>
+            <sphereGeometry args={[0.32, 18, 18]} />
+            <meshStandardMaterial color={new THREE.Color("#f9a8d4")} emissive={new THREE.Color("#f472b6")} emissiveIntensity={0.12} map={maps.leaves} />
           </mesh>
-          <mesh position={[0, 0.06, 0]}>
-            <cylinderGeometry args={[0.05, 0.05, 0.2, 8]} />
-            <meshStandardMaterial color={new THREE.Color("#374151")} map={maps.bark} />
+          <mesh position={[0.22, 0.32, 0.06]}>
+            <sphereGeometry args={[0.2, 16, 16]} />
+            <meshStandardMaterial color={new THREE.Color("#fbcfe8")} map={maps.leaves} />
+          </mesh>
+          <mesh position={[-0.22, 0.3, -0.04]}>
+            <sphereGeometry args={[0.18, 16, 16]} />
+            <meshStandardMaterial color={new THREE.Color("#f472b6")} map={maps.leaves} />
+          </mesh>
+          <mesh position={[0, 0.12, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 0.32, 12]} />
+            <meshStandardMaterial color={new THREE.Color("#5b3a2e")} roughness={0.95} map={maps.bark} />
           </mesh>
         </group>
       );
@@ -386,6 +432,8 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
   const total = rows * cols;
   const normalized = tiles.slice(0, total).concat(Array(Math.max(0, total - tiles.length)).fill("empty"));
   const { positions, width, depth } = useGridPositions(cols, rows);
+  // Compute center house tile indices in component scope
+  const houseSet = useMemo(() => new Set<number>(houseIndices(cols, rows)), [cols, rows]);
   // Ensure a frame is rendered when data-driven visuals change under frameloop="demand"
   useEffect(() => {
     invalidate();
@@ -443,6 +491,117 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     const r = Math.floor((z - originZ + step / 2) / step);
     if (c < 0 || c >= cols || r < 0 || r >= rows) return null;
     return r * cols + c;
+  };
+  // Decorative scatter: rocks and tall grass clumps
+  const ScatterDecor = ({ seed = 42 }: { seed?: number }) => {
+    // Deterministic RNG (xorshift32)
+    let s = seed | 0;
+    const r = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 0xffffffff; };
+    // House world-space AABB
+    const cx0 = Math.floor(cols / 2) - 1;
+    const cy0 = Math.floor(rows / 2) - 1;
+    const houseMinX = originX + (cx0) * step - 0.5;
+    const houseMaxX = originX + (cx0 + 2) * step - step + 0.5;
+    const houseMinZ = originZ + (cy0) * step - 0.5;
+    const houseMaxZ = originZ + (cy0 + 2) * step - step + 0.5;
+    const inHouse = (x: number, z: number) => x >= houseMinX && x <= houseMaxX && z >= houseMinZ && z <= houseMaxZ;
+
+    // Bounds inside the island grass top
+    const minX = -width / 2 + 0.6;
+    const maxX =  width / 2 - 0.6;
+    const minZ = -depth / 2 + 0.6;
+    const maxZ =  depth / 2 - 0.6;
+
+    const area = width * depth;
+    const rockCount = Math.max(6, Math.round(area * 0.6));
+    const grassCount = Math.max(24, Math.round(area * 2.0));
+
+    const rockMatrices: THREE.Matrix4[] = [];
+    const rockColors: THREE.Color[] = [];
+    for (let i = 0; i < rockCount; i++) {
+      let tries = 0;
+      while (tries++ < 10) {
+        const x = minX + r() * (maxX - minX);
+        const z = minZ + r() * (maxZ - minZ);
+        if (inHouse(x, z)) continue;
+        const y = 0.05;
+        const scale = 0.12 + r() * 0.18;
+        const m = new THREE.Matrix4();
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r() * Math.PI * 2, 0));
+        m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(scale * (0.9 + r() * 0.4), scale * (0.6 + r() * 0.7), scale * (0.9 + r() * 0.4)));
+        rockMatrices.push(m);
+        const c = new THREE.Color().setHSL(0, 0, 0.5 + r() * 0.15);
+        rockColors.push(c);
+        break;
+      }
+    }
+
+    const grassMatrices: THREE.Matrix4[] = [];
+    const grassColors: THREE.Color[] = [];
+    for (let i = 0; i < grassCount; i++) {
+      let tries = 0;
+      while (tries++ < 10) {
+        const x = minX + r() * (maxX - minX);
+        const z = minZ + r() * (maxZ - minZ);
+        if (inHouse(x, z)) continue;
+        const y = 0.06;
+        const height = 0.22 + r() * 0.22;
+        const widthXZ = 0.04 + r() * 0.05;
+        const m = new THREE.Matrix4();
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r() * Math.PI * 2, 0));
+        m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(widthXZ, height, widthXZ));
+        grassMatrices.push(m);
+        const c = new THREE.Color().setHSL(0.33, 0.65, 0.45 + r() * 0.2);
+        grassColors.push(c);
+        break;
+      }
+    }
+
+    const rockRef = useRef<THREE.InstancedMesh>(null!);
+    const grassRef = useRef<THREE.InstancedMesh>(null!);
+    useEffect(() => {
+      if (rockRef.current) {
+        const dummy = new THREE.Object3D();
+        rockMatrices.forEach((mat, i) => {
+          dummy.position.setFromMatrixPosition(mat);
+          dummy.quaternion.setFromRotationMatrix(mat);
+          const s = new THREE.Vector3(); mat.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+          dummy.scale.copy(s);
+          dummy.updateMatrix();
+          rockRef.current!.setMatrixAt(i, dummy.matrix);
+          rockRef.current!.setColorAt(i, rockColors[i]);
+        });
+        rockRef.current.instanceMatrix.needsUpdate = true;
+        (rockRef.current as any).instanceColor.needsUpdate = true;
+      }
+      if (grassRef.current) {
+        const dummy = new THREE.Object3D();
+        grassMatrices.forEach((mat, i) => {
+          dummy.position.setFromMatrixPosition(mat);
+          dummy.quaternion.setFromRotationMatrix(mat);
+          const s = new THREE.Vector3(); mat.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+          dummy.scale.copy(s);
+          dummy.updateMatrix();
+          grassRef.current!.setMatrixAt(i, dummy.matrix);
+          grassRef.current!.setColorAt(i, grassColors[i]);
+        });
+        grassRef.current.instanceMatrix.needsUpdate = true;
+        (grassRef.current as any).instanceColor.needsUpdate = true;
+      }
+    }, [width, depth, cols, rows, originX, originZ, step]);
+
+    return (
+      <group>
+        <instancedMesh ref={rockRef} args={[undefined as any, undefined as any, rockMatrices.length]} raycast={() => null}>
+          <icosahedronGeometry args={[1, 0]} />
+          <meshStandardMaterial roughness={1} metalness={0} color={new THREE.Color('#9ca3af')} />
+        </instancedMesh>
+        <instancedMesh ref={grassRef} args={[undefined as any, undefined as any, grassMatrices.length]} raycast={() => null}>
+          <coneGeometry args={[1, 1.8, 6]} />
+          <meshStandardMaterial roughness={0.8} metalness={0} color={new THREE.Color('#22c55e')} />
+        </instancedMesh>
+      </group>
+    );
   };
   // Shared geometries for all tiles to reduce allocations and improve perf
   const geoms = useMemo(() => ({
@@ -634,6 +793,138 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
     );
   };
 
+  // Simple house spanning the 2x2 center area
+  const House = () => {
+    // Compute analytically from grid metrics
+    const cx0 = Math.floor(cols / 2) - 1; // left column of the 2x2 block
+    const cy0 = Math.floor(rows / 2) - 1; // top row of the 2x2 block
+    const cx = originX + (cx0 + 0.5) * step;
+    const cz = originZ + (cy0 + 0.5) * step;
+    // Size to roughly cover 2x2 tiles
+    const baseW = (1 + 0.1) * 2 - 0.2; // step*2 - margin
+    const baseD = (1 + 0.1) * 2 - 0.2;
+    return (
+      <group position={[cx, 0.05, cz]}>
+        {/* Stone foundation slab (slightly inset) */}
+        <mesh position={[0, 0.12, 0]} raycast={() => null}>
+          <boxGeometry args={[baseW * 0.95, 0.24, baseD * 0.95]} />
+          <meshStandardMaterial color={new THREE.Color('#a3a3a3')} roughness={1} />
+        </mesh>
+
+        {/* White walls with wooden frames (shoji-inspired) */}
+        <group position={[0, 0.44, 0]}>
+          {/* Wall core */}
+          <mesh raycast={() => null}>
+            <boxGeometry args={[baseW * 0.8, 0.5, baseD * 0.8]} />
+            <meshStandardMaterial color={new THREE.Color('#f9fafb')} roughness={0.95} />
+          </mesh>
+          {/* Wooden corner posts */}
+          {[
+            [-1, -1], [1, -1], [-1, 1], [1, 1],
+          ].map(([sx, sz], i) => (
+            <mesh key={i} position={[sx * baseW * 0.38, 0, sz * baseD * 0.38]} raycast={() => null}>
+              <boxGeometry args={[0.06, 0.55, 0.06]} />
+              <meshStandardMaterial color={new THREE.Color('#8b5e3c')} roughness={0.9} />
+            </mesh>
+          ))}
+          {/* Wooden horizontal beams */}
+          {[-0.18, 0, 0.18].map((y, i) => (
+            <mesh key={`hb-${i}`} position={[0, y, 0]} raycast={() => null}>
+              <boxGeometry args={[baseW * 0.78, 0.03, baseD * 0.03]} />
+              <meshStandardMaterial color={new THREE.Color('#8b5e3c')} roughness={0.9} />
+            </mesh>
+          ))}
+          {/* Wooden vertical slats front/back */}
+          {Array.from({ length: 6 }).map((_, i) => {
+            const t = (i - 2.5) / 2.5; // -1..1
+            const x = t * baseW * 0.36;
+            return (
+              <group key={`slat-${i}`}>
+                <mesh position={[x, 0, baseD * 0.38]} raycast={() => null}>
+                  <boxGeometry args={[0.02, 0.46, 0.02]} />
+                  <meshStandardMaterial color={new THREE.Color('#8b5e3c')} roughness={0.9} />
+                </mesh>
+                <mesh position={[x, 0, -baseD * 0.38]} raycast={() => null}>
+                  <boxGeometry args={[0.02, 0.46, 0.02]} />
+                  <meshStandardMaterial color={new THREE.Color('#8b5e3c')} roughness={0.9} />
+                </mesh>
+              </group>
+            );
+          })}
+        </group>
+
+        {/* Tiered dark roof with extended eaves */}
+        <group>
+          {/* Lower eave plate */}
+          <mesh position={[0, 0.76, 0]} raycast={() => null}>
+            <boxGeometry args={[baseW * 1.05, 0.04, baseD * 1.05]} />
+            <meshStandardMaterial color={new THREE.Color('#374151')} emissive={new THREE.Color('#4b5563')} emissiveIntensity={0.08} roughness={0.8} />
+          </mesh>
+          {/* Lower roof (flat cone like) */}
+          <mesh position={[0, 0.92, 0]} rotation={[0, Math.PI / 4, 0]} raycast={() => null}>
+            <coneGeometry args={[Math.min(baseW, baseD) * 0.75, 0.28, 4]} />
+            <meshStandardMaterial color={new THREE.Color('#4b5563')} emissive={new THREE.Color('#6b7280')} emissiveIntensity={0.08} roughness={0.75} />
+          </mesh>
+          {/* Upper eave plate */}
+          <mesh position={[0, 1.06, 0]} raycast={() => null}>
+            <boxGeometry args={[baseW * 0.72, 0.035, baseD * 0.72]} />
+            <meshStandardMaterial color={new THREE.Color('#374151')} emissive={new THREE.Color('#4b5563')} emissiveIntensity={0.08} roughness={0.8} />
+          </mesh>
+          {/* Upper roof */}
+          <mesh position={[0, 1.18, 0]} rotation={[0, Math.PI / 4, 0]} raycast={() => null}>
+            <coneGeometry args={[Math.min(baseW, baseD) * 0.5, 0.24, 4]} />
+            <meshStandardMaterial color={new THREE.Color('#4b5563')} emissive={new THREE.Color('#6b7280')} emissiveIntensity={0.08} roughness={0.75} />
+          </mesh>
+          {/* Finial */}
+          <mesh position={[0, 1.32, 0]} raycast={() => null}>
+            <cylinderGeometry args={[0.02, 0.02, 0.08, 8]} />
+            <meshStandardMaterial color={new THREE.Color('#374151')} roughness={1} />
+          </mesh>
+        </group>
+
+        {/* Entrance shoji (two sliding panels) */}
+        <group position={[0, 0.36, baseD * 0.41]}>
+          {[ -0.12, 0.12 ].map((x, i) => (
+            <group key={`door-${i}`} position={[x, 0, 0]}>
+              <mesh raycast={() => null}>
+                <boxGeometry args={[0.18, 0.28, 0.03]} />
+                <meshStandardMaterial color={new THREE.Color('#f3f4f6')} roughness={1} />
+              </mesh>
+              {/* door grid */}
+              <mesh position={[0, 0, 0.017]} raycast={() => null}>
+                <boxGeometry args={[0.18, 0.02, 0.002]} />
+                <meshStandardMaterial color={new THREE.Color('#8b5e3c')} />
+              </mesh>
+              {[-0.07, 0, 0.07].map((vx, j) => (
+                <mesh key={`dg-${i}-${j}`} position={[vx, 0, 0.017]} raycast={() => null}>
+                  <boxGeometry args={[0.02, 0.28, 0.002]} />
+                  <meshStandardMaterial color={new THREE.Color('#8b5e3c')} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+        </group>
+
+        {/* Stone lanterns with warm glow */}
+        {[
+          [-baseW * 0.32, baseD * 0.32],
+          [ baseW * 0.32, baseD * 0.32],
+        ].map(([lx, lz], i) => (
+          <group key={`lantern-${i}`} position={[lx, 0.14, lz]}>
+            <mesh raycast={() => null}>
+              <cylinderGeometry args={[0.03, 0.03, 0.16, 8]} />
+              <meshStandardMaterial color={new THREE.Color('#9ca3af')} roughness={1} />
+            </mesh>
+            <mesh position={[0, 0.12, 0]} raycast={() => null}>
+              <boxGeometry args={[0.08, 0.05, 0.08]} />
+              <meshStandardMaterial color={new THREE.Color('#fef3c7')} emissive={new THREE.Color('#f59e0b')} emissiveIntensity={0.35} roughness={0.8} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
+  };
+
   return (
     <div className={className} style={{ width: "100%", height }}>
       <Canvas
@@ -673,8 +964,10 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
             </group>
             {/* Decorative perimeter */}
             {!reducedMotion && <Fence />}
-            {/* Rocks, grass, farms and houses to make the garden feel real */}
-            {/* {!reducedMotion && <PerimeterDecorations width={width} depth={depth} reducedMotion={reducedMotion} />} */}
+            {/* Decorative scatter: rocks and tall grass */}
+            <ScatterDecor seed={1337} />
+            {/* House spanning the center 2x2 tiles */}
+            <House />
             {/* Tiles */}
             {positions.map((pos, i) => {
               const t = normalized[i];
@@ -682,7 +975,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                 <group key={i} position={pos}>
                   <MemoTileMesh i={i} position={[0, 0, 0]} hovered={i === hoveredIndex} checker={(i + Math.floor(i / cols)) % 2 === 0} geoms={geoms} maps={{ grass: textureMaps.grass, grassRough: textureMaps.grassRough, dirt: textureMaps.dirt, dirtRough: textureMaps.dirtRough }} isDark={isDark} />
                   {/* Tree */}
-                  {isTree(t) ? <TreeMesh type={t} animated={!reducedMotion && pageVisible} maps={{ bark: textureMaps.bark, leaves: textureMaps.leaves }} /> : null}
+                  {houseSet.has(i) ? null : (isTree(t) ? <TreeMesh type={t} animated={!reducedMotion && pageVisible} maps={{ bark: textureMaps.bark, leaves: textureMaps.leaves }} /> : null)}
                 </group>
               );
             })}
@@ -695,7 +988,10 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                 const idx = indexFromXZ(p.x, p.z);
                 if (idx !== hoveredIndex) {
                   setHoveredIndex(idx);
-                  if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
+                  if (typeof document !== 'undefined') {
+                    const overHouse = idx !== null && houseSet.has(idx);
+                    document.body.style.cursor = idx !== null && !overHouse ? 'pointer' : 'default';
+                  }
                   invalidate();
                 }
               }}
@@ -710,7 +1006,10 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
                     const idx = indexFromXZ(last.x, last.z);
                     if (idx !== hoveredIndex) {
                       setHoveredIndex(idx);
-                      if (typeof document !== 'undefined') document.body.style.cursor = idx !== null ? 'pointer' : 'default';
+                      if (typeof document !== 'undefined') {
+                        const overHouse = idx !== null && houseSet.has(idx);
+                        document.body.style.cursor = idx !== null && !overHouse ? 'pointer' : 'default';
+                      }
                       invalidate();
                     }
                   });
@@ -719,7 +1018,7 @@ export function GardenIso3D({ cols = 10, rows = 10, tiles, onTileClick, classNam
               onClick={(e) => {
                 const p = e.point;
                 const idx = indexFromXZ(p.x, p.z);
-                if (idx !== null) handleTile(idx);
+                if (idx !== null && !houseSet.has(idx)) handleTile(idx);
                 invalidate();
               }}
               onPointerLeave={() => {

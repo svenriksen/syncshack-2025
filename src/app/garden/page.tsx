@@ -6,17 +6,19 @@ import { Button } from "../_components/button";
 import dynamic from "next/dynamic";
 const GardenIso3D = dynamic(() => import("../_components/garden-iso-3d").then((m) => m.GardenIso3D), { ssr: false });
 import { DEFAULT_COLS, DEFAULT_ROWS } from "../_components/garden-config";
+import type { TreeType as RenderTreeType } from "../_components/garden-iso-3d";
+import { houseIndices } from "@/lib/garden";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { ProtectedRoute } from "../_components/protected-route";
 
-type TreeType = "empty" | "sapling" | "young" | "mature" | "withered";
+type TreeType = RenderTreeType;
 
 export default function GardenPage() {
   const cols = DEFAULT_COLS;
   const rows = DEFAULT_ROWS;
   const [tiles, setTiles] = useState<TreeType[]>(() => new Array<TreeType>(rows * cols).fill("empty"));
-  const [selected, setSelected] = useState<Exclude<TreeType, "empty">>("withered");
+  const [selected, setSelected] = useState<Exclude<TreeType, "empty">>("pine");
   const [mounted, setMounted] = useState(false);
   const [isLocalhost, setIsLocalhost] = useState(false);
 
@@ -57,7 +59,7 @@ export default function GardenPage() {
 
   // Hydrate local tiles from server garden data
   useEffect(() => {
-    const serverTiles = gardenData?.tiles as TreeType[] | undefined;
+    const serverTiles = gardenData?.tiles as RenderTreeType[] | undefined;
     if (serverTiles) {
       const total = rows * cols;
       const normalized = serverTiles
@@ -67,17 +69,18 @@ export default function GardenPage() {
     }
   }, [gardenData, rows, cols]);
   
-  // Client-side prices for optimistic coin updates
+  // Client-side prices for optimistic coin updates (must match server)
   const CLIENT_TREE_PRICES: Record<Exclude<TreeType, "empty">, number> = {
-    sapling: 100,
-    young: 250,
-    mature: 600,
-    withered: 0,
-  };
+    pine: 150,
+    bamboo: 200,
+    maple: 300,
+    bonsai: 500,
+    sakura: 650,
+  } as const;
 
   // Plant tree mutation with optimistic update
   const plantTreeMutation = api.coin.plantTree.useMutation({
-    onMutate: async (variables) => {
+    onMutate: async (variables: { x: number; y: number; type: Exclude<TreeType, "empty"> }) => {
       const { x, y, type } = variables;
       const idx = y * cols + x;
 
@@ -103,7 +106,7 @@ export default function GardenPage() {
         tilesArr[idx] = type;
         return { tiles: tilesArr as TreeType[], gardens: old?.gardens ?? [] } as any;
       });
-      const price = CLIENT_TREE_PRICES[type as Exclude<TreeType, "empty">];
+      const price = CLIENT_TREE_PRICES[type as keyof typeof CLIENT_TREE_PRICES] ?? 0;
       utils.coin.getBalance.setData(undefined, (old) => ({ coins: Math.max(0, (old?.coins ?? 0) - price) }));
 
       return { prevGarden, prevBalance, idx };
@@ -139,9 +142,9 @@ export default function GardenPage() {
       const prevBalance = utils.coin.getBalance.getData();
 
       // Determine refund from existing type for optimistic coin add
-      const existingType = tiles[idx];
-      const originalPrice = CLIENT_TREE_PRICES[(existingType as Exclude<TreeType, "empty">) ?? "withered"] ?? 0;
-      const optimisticRefund = existingType !== "withered" && existingType !== "empty" ? Math.floor(originalPrice * 0.5) : 0;
+      const existingType = tiles[idx] as TreeType;
+      const originalPrice = existingType !== "empty" ? (CLIENT_TREE_PRICES as any)[existingType] ?? 0 : 0;
+      const optimisticRefund = originalPrice > 0 ? Math.floor(originalPrice * 0.5) : 0;
 
       // Optimistically update local tiles
       setTiles((prev) => {
@@ -186,19 +189,23 @@ export default function GardenPage() {
   const handleTileClick = (idx: number) => {
     const x = idx % cols;
     const y = Math.floor(idx / cols);
+    // Block interactions on house tiles
+    const houseSet = new Set(houseIndices(cols, rows));
+    if (houseSet.has(idx)) {
+      toast.error("You can't plant here – the house occupies this tile.");
+      return;
+    }
     const currentTile = tiles[idx];
 
     if (currentTile === "empty") {
-      // Guard: prevent planting unaffordable paid trees
-      if (selected !== "withered") {
-        const price = CLIENT_TREE_PRICES[selected];
-        if (coins < price) {
-          toast.error("Not enough coins to plant this tree.");
-          return;
-        }
+      // Guard: prevent planting unaffordable trees
+      const price = CLIENT_TREE_PRICES[selected as keyof typeof CLIENT_TREE_PRICES] ?? 0;
+      if (coins < price) {
+        toast.error("Not enough coins to plant this tree.");
+        return;
       }
 
-      // Plant a tree
+      // Plant a tree (withered is not plantable from UI)
       plantTreeMutation.mutate({ x, y, type: selected });
     } else {
       // Remove the tree
@@ -255,31 +262,39 @@ export default function GardenPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Button 
-                variant={selected === "sapling" ? "primary" : "secondary"} 
-                onClick={() => setSelected("sapling")}
-                disabled={coins < 100}
+                variant={selected === "pine" ? "primary" : "secondary"} 
+                onClick={() => setSelected("pine")}
+                disabled={coins < CLIENT_TREE_PRICES.pine}
               >
-                Sapling • 100
+                Pine • {CLIENT_TREE_PRICES.pine}
               </Button>
               <Button 
-                variant={selected === "young" ? "primary" : "secondary"} 
-                onClick={() => setSelected("young")}
-                disabled={coins < 250}
+                variant={selected === "bamboo" ? "primary" : "secondary"} 
+                onClick={() => setSelected("bamboo")}
+                disabled={coins < CLIENT_TREE_PRICES.bamboo}
               >
-                Young • 250
+                Bamboo • {CLIENT_TREE_PRICES.bamboo}
               </Button>
               <Button 
-                variant={selected === "mature" ? "primary" : "secondary"} 
-                onClick={() => setSelected("mature")}
-                disabled={coins < 600}
+                variant={selected === "maple" ? "primary" : "secondary"} 
+                onClick={() => setSelected("maple")}
+                disabled={coins < CLIENT_TREE_PRICES.maple}
               >
-                Mature • 600
+                Maple • {CLIENT_TREE_PRICES.maple}
               </Button>
               <Button 
-                variant={selected === "withered" ? "primary" : "secondary"} 
-                onClick={() => setSelected("withered")}
+                variant={selected === "bonsai" ? "primary" : "secondary"} 
+                onClick={() => setSelected("bonsai")}
+                disabled={coins < CLIENT_TREE_PRICES.bonsai}
               >
-                Withered
+                Bonsai • {CLIENT_TREE_PRICES.bonsai}
+              </Button>
+              <Button 
+                variant={selected === "sakura" ? "primary" : "secondary"} 
+                onClick={() => setSelected("sakura")}
+                disabled={coins < CLIENT_TREE_PRICES.sakura}
+              >
+                Sakura • {CLIENT_TREE_PRICES.sakura}
               </Button>
             </div>
             <div className="rounded-[var(--radius-sm)] bg-[rgb(var(--color-foreground))/0.06] p-3 text-sm text-[rgb(var(--color-foreground))/0.7]">
