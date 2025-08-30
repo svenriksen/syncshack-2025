@@ -1,149 +1,100 @@
-// src/server/osm.ts
-// Utilities for free OpenStreetMap (Nominatim + Overpass)
-
 export type GeoPoint = { lat: number; lng: number };
 
-// Use a polite User-Agent per OSM rules
-const UA =
-    process.env.OSM_USER_AGENT
-
-/**
- * Geocode an address → { lat, lng }
- * Uses Nominatim (free, no key required)
- */
-//Convert a human-readable address (e.g. "Sydney Opera House") into { lat, lng } coordinates
-export async function geocodeNominatim(
-    address: string
-): Promise<GeoPoint | null> {
-    console.log("Geocoding address:", address);
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("q", address);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("limit", "1");
-    url.searchParams.set("addressdetails", "0");
-
-    const res = await fetch(url.toString(), {
-        headers: { "User-Agent": UA },
-        cache: "no-store",
-    });
-    if (!res.ok) return null;
-
-    const arr = (await res.json()) as Array<{ lat: string; lon: string }>;
-    const first = arr[0];
-    return first
-        ? { lat: parseFloat(first.lat), lng: parseFloat(first.lon) }
-        : null;
-}
-
-/**
- * Compute haversine distance (km) between two coords
- */
-export function haversineKm(a: GeoPoint, b: GeoPoint) {
-    const R = 6371;
-    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+// reuse your existing haversine if you like
+export function haversineKm(a: GeoPoint, b: GeoPoint): number {
+    const R = 6371; // Earth radius in km
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
     const s1 = Math.sin(dLat / 2) ** 2;
-    const s2 =
-        Math.cos((a.lat * Math.PI) / 180) *
-        Math.cos((b.lat * Math.PI) / 180) *
-        Math.sin(dLng / 2) ** 2;
+    const s2 = Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(s1 + s2));
 }
 
-/**
- * Query Overpass for nearby "hidden gems"
- * Parks, gardens, museums, libraries, viewpoints, artworks
- */
-export async function overpassHiddenGems(
-    origin: GeoPoint,
-    radiusMeters = 3000
-) {
-    const query = `
-    [out:json][timeout:25];
-    (
-      node["leisure"="park"](around:${radiusMeters},${origin.lat},${origin.lng});
-      way ["leisure"="park"](around:${radiusMeters},${origin.lat},${origin.lng});
-      relation["leisure"="park"](around:${radiusMeters},${origin.lat},${origin.lng});
+const MAPBOX_TOKEN = process.env.MAP_BOX!;
+if (!MAPBOX_TOKEN) console.warn("⚠ MAPBOX_ACCESS_TOKEN missing");
 
-      node["leisure"="garden"](around:${radiusMeters},${origin.lat},${origin.lng});
-      way ["leisure"="garden"](around:${radiusMeters},${origin.lat},${origin.lng});
-
-      node["tourism"="museum"](around:${radiusMeters},${origin.lat},${origin.lng});
-      way ["tourism"="museum"](around:${radiusMeters},${origin.lat},${origin.lng});
-
-      node["tourism"="viewpoint"](around:${radiusMeters},${origin.lat},${origin.lng});
-      node["amenity"="library"](around:${radiusMeters},${origin.lat},${origin.lng});
-      node["tourism"="artwork"](around:${radiusMeters},${origin.lat},${origin.lng});
+export async function geocodeMapbox(address: string): Promise<GeoPoint | null> {
+    const url = new URL(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`
     );
-    out center tags;
-  `.trim();
+    url.searchParams.set("access_token", MAPBOX_TOKEN);
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("types", ["address","place","locality","poi","region"].join(","));
+    url.searchParams.set("language", "en");
+    // url.searchParams.set("country", "AU"); // optional bias
 
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "User-Agent": UA,
-        },
-        body: new URLSearchParams({ data: query }).toString(),
-        cache: "no-store",
-    });
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as { features: Array<{ center: [number, number] }> };
+    const f = data.features?.[0];
+    if (!f) return null;
+
+    const [lng, lat] = f.center;
+    return { lat, lng };
+}
+
+export async function getNearestPlacesByAddress(address: string, radiusMeters = 3000) {
+    const point = await geocodeMapbox(address);
+    if (!point) return [];
+    return mapboxHiddenGems(point, radiusMeters);
+}
+
+export async function mapboxHiddenGems(origin: GeoPoint, radiusMeters = 3000) {
+    const categories = ["park", "garden", "museum", "library", "viewpoint", "artwork"];
+
+    // NOTE: empty search term + categories param
+    const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/.json`);
+    url.searchParams.set("access_token", MAPBOX_TOKEN);
+    url.searchParams.set("types", "poi");
+    url.searchParams.set("limit", "50");                  // grab more, we’ll filter by radius
+    url.searchParams.set("language", "en");
+    url.searchParams.set("categories", categories.join(",")); // <-- correct way
+    url.searchParams.set("country", "AU");                    // helpful bias
+    // optionally constrain to greater Sydney to avoid random NSW hits
+    url.searchParams.set("bbox", `150.50,-34.20,151.40,-33.40`);
+    url.searchParams.set("proximity", `${origin.lng},${origin.lat}`);
+
+    const res = await fetch(url.toString(), { cache: "no-store" });
     if (!res.ok) return [];
 
-    type El = {
-        id: number;
-        type: "node" | "way" | "relation";
-        lat?: number;
-        lon?: number;
-        center?: { lat: number; lon: number };
-        tags?: Record<string, string>;
+    type Feature = {
+        id: string;
+        text?: string;
+        place_name?: string;
+        center?: [number, number];
+        relevance?: number;
+        properties?: { category?: string };
     };
-    const data = (await res.json()) as { elements: El[] };
+    const data = (await res.json()) as { features: Feature[] };
 
-    const items = (data.elements ?? [])
-        .map((e) => {
-            const lat = e.lat ?? e.center?.lat;
-            const lng = e.lon ?? e.center?.lon;
-            if (!lat || !lng) return null;
-            const tags = e.tags ?? {};
-            const name = tags.name || tags["name:en"] || inferLabel(tags);
-            const addr =
-                tags["addr:full"] ||
-                [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]]
-                    .filter(Boolean)
-                    .join(" ") ||
-                tags.description ||
-                "";
+    const items = (data.features ?? [])
+        .filter(f => Array.isArray(f.center) && f.center!.length === 2)
+        .map(f => {
+            const [lng, lat] = f.center!;
             return {
-                providerId: `osm-${e.type}-${e.id}`,
-                name,
-                address: addr,
-                lat,
-                lng,
+                providerId: `mapbox-${f.id}`,
+                name: f.text || "Place",
+                address: f.place_name || "",
+                lat, lng,
+                category: f.properties?.category,
             };
         })
-        .filter(Boolean) as Array<{
-        providerId: string;
-        name: string;
-        address: string;
-        lat: number;
-        lng: number;
-    }>;
-
-    return items
-        .map((p) => ({
-            ...p,
-            distanceKm: haversineKm(origin, { lat: p.lat, lng: p.lng }),
-        }))
+        .map(p => ({ ...p, distanceKm: haversineKm(origin, { lat: p.lat, lng: p.lng }) }))
+        .filter(p => p.distanceKm * 1000 <= radiusMeters)
         .sort((a, b) => a.distanceKm - b.distanceKm)
         .slice(0, 10);
+
+    return items;
+}
+export async function getDistanceByAddresses(from: string, to: string) {
+    const p1 = await geocodeMapbox(from);
+    const p2 = await geocodeMapbox(to);
+    if (!p1 || !p2) return null;
+    return haversineKm(p1, p2);
 }
 
-function inferLabel(tags: Record<string, string>) {
-    if (tags["leisure"] === "park") return "Park";
-    if (tags["leisure"] === "garden") return "Garden";
-    if (tags["tourism"] === "viewpoint") return "Viewpoint";
-    if (tags["tourism"] === "museum") return "Museum";
-    if (tags["amenity"] === "library") return "Library";
-    if (tags["tourism"] === "artwork") return "Artwork";
-    return "Place";
-}
+
