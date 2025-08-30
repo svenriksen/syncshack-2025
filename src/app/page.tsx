@@ -156,10 +156,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Floating Chat Widget */}
-      <ChatWidget />
     </div>
   );
 }
 
-// Note: ChatWidget is a client component; importing it here is supported in the App Router.
+// Chat widget is rendered globally in layout.
