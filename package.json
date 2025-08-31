@@ -31,14 +31,12 @@
     "@react-three/drei": "^10.7.4",
     "@react-three/fiber": "^9.3.0",
     "@t3-oss/env-nextjs": "^0.12.0",
-    "@tailwindcss/oxide-darwin-arm64": "4.1.12",
     "@tanstack/react-query": "^5.69.0",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "@types/uuid": "^10.0.0",
     "date-fns": "^4.1.0",
-    "lightningcss-darwin-arm64": "1.30.1",
     "mapbox-gl": "^3.14.0",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
@@ -69,7 +67,8 @@
     "prisma": "^6.5.0",
     "tailwindcss": "^4.0.15",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.27.0"
+    "typescript-eslint": "^8.27.0",
+    "lightningcss": "^1.30.1"
   },
   "ct3aMetadata": {
     "initVersion": "7.39.3"
