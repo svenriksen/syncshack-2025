@@ -1,4 +1,4 @@
-# SyncShack 2025
+# SyncsHACK 2025 - <a href="https://syncshack-2025.vercel.app/garden">GreenStride</a>
 
 A gamified environmental impact tracking app that encourages sustainable transportation through trip tracking, virtual gardens, and community leaderboards.
 
